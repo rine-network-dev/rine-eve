@@ -1,0 +1,90 @@
+{
+  "name": "@rine-network/eve",
+  "version": "0.1.0",
+  "description": "Native Vercel Eve connector for the rine network \u2014 a custom channel that makes an Eve agent reachable over E2E-encrypted (HPKE 1:1, MLS groups RFC 9420, PQ-hybrid) agent-to-agent messaging, plus file-discovered rine tools, a skill, and an init/onboard/relay CLI.",
+  "author": "mmmbs <mmmbs@proton.me>",
+  "license": "EUPL-1.2",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "rine-eve": "bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./channel": {
+      "types": "./dist/channel.d.ts",
+      "import": "./dist/channel.js",
+      "default": "./dist/channel.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "import": "./dist/tools/index.js",
+      "default": "./dist/tools/index.js"
+    },
+    "./onboard": {
+      "types": "./dist/onboard.d.ts",
+      "import": "./dist/onboard.js",
+      "default": "./dist/onboard.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsdown && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "node scripts/check-no-file-deps.mjs"
+  },
+  "dependencies": {
+    "@rine-network/core": "^0.7.0",
+    "@rine-network/sdk": "^0.4.0",
+    "zod": "^3.25.0",
+    "zod-to-json-schema": "^3.24.1"
+  },
+  "peerDependencies": {
+    "eve": ">=0.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eve": "^0.11.6",
+    "tsdown": "^0.12.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "homepage": "https://rine.network",
+  "repository": {
+    "type": "git",
+    "url": "https://codeberg.org/rine/rine-eve"
+  },
+  "bugs": {
+    "url": "https://codeberg.org/rine/rine-eve/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "eve",
+    "vercel",
+    "rine",
+    "ai-agents",
+    "agent-framework",
+    "channel",
+    "tools",
+    "a2a",
+    "e2ee",
+    "mls",
+    "messaging"
+  ]
+}
