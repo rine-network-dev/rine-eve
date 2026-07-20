@@ -20,12 +20,16 @@ afterEach(() => {
 
 describe("resolveToolSelection", () => {
 	it("expands all / none", () => {
-		expect(resolveToolSelection("all")).toHaveLength(12);
+		expect(resolveToolSelection("all")).toHaveLength(14);
 		expect(resolveToolSelection("none")).toHaveLength(0);
-		expect(resolveToolSelection(undefined)).toHaveLength(12);
+		expect(resolveToolSelection(undefined)).toHaveLength(14);
 	});
 	it("selects by domain and by name", () => {
 		expect(resolveToolSelection("messaging").map((t) => t.name)).toContain("rine_send");
+		expect(resolveToolSelection("payments").map((t) => t.name).sort()).toEqual([
+			"rine_fulfill",
+			"rine_pay",
+		]);
 		expect(resolveToolSelection("discovery")).toHaveLength(2);
 		const named = resolveToolSelection("rine_send,rine_discover");
 		expect(named.map((t) => t.name).sort()).toEqual(["rine_discover", "rine_send"]);
@@ -59,8 +63,8 @@ describe("scaffoldRine", () => {
 		expect(existsSync(join(dir, "agent/tools/rine_group_inspect.ts"))).toBe(true);
 		expect(existsSync(join(dir, "agent/skills/rine/SKILL.md"))).toBe(true);
 		expect(existsSync(join(dir, ".env.example"))).toBe(true);
-		// 1 channel + 12 tools + 1 skill + 1 env
-		expect(res.written.length).toBe(15);
+		// 1 channel + 14 tools + 1 skill + 1 env
+		expect(res.written.length).toBe(17);
 		expect(readFileSync(join(dir, "agent/skills/rine/SKILL.md"), "utf-8")).toContain("description:");
 	});
 

@@ -1,14 +1,12 @@
 /**
- * Pure inbound/outbound pipeline for the rine channel — no `eve` import, so it is
- * unit-testable with fake clients/sends. `channel.ts` wires these to Eve's
- * `defineChannel` routes + events.
+ * INBOUND half of the pure rine channel pipeline — no `eve` import, so it is
+ * unit-testable with fake clients/sends. `channel.ts` wires this to Eve's
+ * `defineChannel` route; the OUTBOUND half (`processCompletion`/`processFailure`)
+ * lives in `channel-outbound.ts`.
  *
  *   - INBOUND (`processInbound`): HMAC-verify (transport auth, R5) → parse → dedupe
  *     → `client.read(id)` to HPKE-decrypt + verify the sender's Ed25519 signature
  *     (content auth, R5) → loop-guard → mark delivered → start/resume the session.
- *   - OUTBOUND (`processCompletion`): on a terminal assistant message (R6) reply
- *     back over rine IN-PLACE via the reply endpoint, preserving the inbound
- *     conversation (R7); falls back to `parentConversationId` for legacy tokens.
  *
  * TRUST NOTE: `verified === true` cryptographically binds the message's *signer*
  * (the envelope `kid`), but the SDK exposes only the server-asserted
@@ -24,14 +22,12 @@ import { renderMessageBody, senderLabel, verifiedNote } from "./format.js";
 import { renderTranscriptContext } from "./transcript.js";
 import { verifyRineSignature } from "./hmac.js";
 import {
-	decodeReplyToken,
 	encodeReplyToken,
 	messageIdFromWebhook,
+	rememberSeen,
 } from "./inbound.js";
-import { asRecipient } from "./tool.js";
 import type { DecryptedMessage } from "./types.js";
-
-const SEEN_CAP = 5000;
+import { handleX402Inbound, isX402Frame } from "./x402.js";
 
 /** Minimal `send` surface the inbound handler needs (Eve's route `send`). */
 export type ChannelSend = (
@@ -58,6 +54,13 @@ export interface InboundDeps {
 	maxBodyBytes: number;
 	/** Inbound types to ignore (loop guard). */
 	ignoreTypes: readonly string[];
+	/**
+	 * D2 opt-in auto-pay (default OFF). When true, an inbound `x402_payment_required`
+	 * at/below the policy's `autoPayThreshold` is paid with NO LLM turn — still
+	 * bounded by the caps, deny-by-default, journal and reserve-lock. Any decline
+	 * falls back to surfacing the quote to the model.
+	 */
+	autoPay?: boolean;
 	/** Bounded set of already-handled message ids (dedupe across retries/replays). */
 	seen?: Set<string>;
 	/**
@@ -116,8 +119,13 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	// Loop guard: never auto-reply to our own outbound types (R2) — only AFTER the
 	// signature check, so a forged type can't suppress a real message.
 	if (deps.ignoreTypes.includes(msg.type)) {
-		deps.seen?.add(messageId);
+		rememberSeen(deps.seen, messageId);
 		return new Response("ignored type", { status: 202 });
+	}
+	// x402 payment-aware re-surface (D1/D2): a payment frame becomes a structured
+	// agent turn (optionally auto-paid) — never a prose auto-reply into the thread.
+	if (isX402Frame(msg.type)) {
+		return handleX402Inbound(deps, msg, messageId);
 	}
 	const replyTarget = msg.group_handle ?? msg.sender_handle;
 	if (!replyTarget) return new Response("no reply target", { status: 422 });
@@ -134,10 +142,7 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	// Ack delivery BEFORE starting the turn so a concurrent retry dedupes server-side
 	// too (the in-memory `seen` only covers this instance).
 	await deps.client.markDelivered([msg.id]).catch(() => {});
-	if (deps.seen) {
-		if (deps.seen.size >= SEEN_CAP) deps.seen.clear();
-		deps.seen.add(messageId);
-	}
+	rememberSeen(deps.seen, messageId);
 	// REQ-CTX-01: the Eve session is stateless per inbound, so push-inject the recent
 	// thread as role-tagged context for cross-turn memory. The sender/where line stays
 	// FIRST. Best-effort: a thread fetch failure must NOT block delivery — fall back to
@@ -162,65 +167,4 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 		{ auth: null, continuationToken: token },
 	);
 	return new Response("ok", { status: 200 });
-}
-
-export interface CompletionDeps {
-	finishReason: string;
-	message: string | null;
-	continuationToken: string;
-	client: AsyncRineClient;
-	replyMessageType: string;
-}
-
-/**
- * Outbound for `message.completed`: every TERMINAL assistant message (any
- * `finishReason` except the intermediate `tool-calls`, R6) with text becomes a
- * reply. When the continuation token carries the inbound message id we reply
- * IN-PLACE via the reply endpoint (same conversation, no fork) keeping the
- * connector's `replyMessageType` unchanged — type-preserving, so terminal/wake
- * semantics are exactly as before. Legacy tokens (no message id) fall back to the
- * historical `send()+parentConversationId` path. No-ops for non-rine sessions
- * (token not ours) or empty messages.
- */
-export async function processCompletion(deps: CompletionDeps): Promise<void> {
-	if (deps.finishReason === "tool-calls") return;
-	if (!deps.message) return;
-	const rc = decodeReplyToken(deps.continuationToken);
-	if (!rc) return;
-	if (rc.messageId) {
-		await deps.client.reply(
-			asMessageUuid(rc.messageId),
-			{ text: deps.message },
-			{ type: deps.replyMessageType },
-		);
-		return;
-	}
-	await deps.client.send(
-		asRecipient(rc.replyTarget),
-		{ text: deps.message },
-		{ type: deps.replyMessageType, parentConversationId: rc.conversationId },
-	);
-}
-
-/**
- * Best-effort error notice back to the sender on a terminal session failure.
- * Replies IN-PLACE (reply endpoint, same conversation) keeping the `rine.v1.error`
- * type; falls back to `send()+parentConversationId` for legacy tokens.
- */
-export async function processFailure(
-	continuationToken: string,
-	client: AsyncRineClient,
-): Promise<void> {
-	const rc = decodeReplyToken(continuationToken);
-	if (!rc) return;
-	const text = "Sorry — I hit an internal error handling your request.";
-	if (rc.messageId) {
-		await client.reply(asMessageUuid(rc.messageId), { text }, { type: "rine.v1.error" });
-		return;
-	}
-	await client.send(
-		asRecipient(rc.replyTarget),
-		{ text },
-		{ type: "rine.v1.error", parentConversationId: rc.conversationId },
-	);
 }

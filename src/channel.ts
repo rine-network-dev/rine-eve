@@ -12,29 +12,36 @@
 
 import type { AsyncRineClient } from "@rine-network/sdk";
 import { POST, defineChannel } from "eve/channels";
-import {
-	processCompletion,
-	processFailure,
-	processInbound,
-} from "./channel-core.js";
+import { processInbound } from "./channel-core.js";
 import type { ChannelSend } from "./channel-core.js";
+import { processCompletion, processFailure } from "./channel-outbound.js";
 import { getRineClient } from "./client.js";
 
-export {
-	processInbound,
-	processCompletion,
-	processFailure,
-	senderContextLine,
-} from "./channel-core.js";
-export type { ChannelSend, InboundDeps, CompletionDeps } from "./channel-core.js";
+export { processInbound, senderContextLine } from "./channel-core.js";
+export { processCompletion, processFailure } from "./channel-outbound.js";
+export type { ChannelSend, InboundDeps } from "./channel-core.js";
+export type { CompletionDeps } from "./channel-outbound.js";
 
 const DEFAULT_INBOUND_PATH = "/rine/v1/inbound";
 const DEFAULT_REPLY_TYPE = "rine.v1.task_response";
 const DEFAULT_MAX_BODY_BYTES = 512 * 1024;
 /** Default token budget for the push-injected transcript (REQ-CTX-01, ≈8000 chars). */
 const DEFAULT_THREAD_CONTEXT_TOKEN_BUDGET = 2000;
-/** Message types the connector itself emits — never auto-replied to (loop guard, R2). */
-const DEFAULT_IGNORE_TYPES = ["rine.v1.task_response", "rine.v1.error", "rine.v1.receipt"];
+/**
+ * Message types never auto-replied to (loop guard, R2): the connector's OWN
+ * outbound types (task_response/error/receipt), so two rine-eve agents don't
+ * auto-reply to each other forever.
+ *
+ * The three x402 payment frames are NOT here: v1.1 re-surfaces them as
+ * payment-aware agent turns (D1), routed by `handleX402Inbound` with the prose
+ * auto-reply suppressed (the `x402` continuation-token flag), never by the generic
+ * assistant reply. Adding them here would revert to the v1.0 silent-drop behavior.
+ */
+export const DEFAULT_IGNORE_TYPES = [
+	"rine.v1.task_response",
+	"rine.v1.error",
+	"rine.v1.receipt",
+];
 
 /** Options for {@link rineChannel}. All optional; identity defaults to env. */
 export interface RineChannelOptions {
@@ -65,6 +72,19 @@ export interface RineChannelOptions {
 	threadContextTokenBudget?: number;
 	/** A pre-built client (tests / advanced use); otherwise env-resolved lazily. */
 	client?: AsyncRineClient;
+	/**
+	 * x402 payment behavior (D2). `autoPay` is OPT-IN and DEFAULT OFF: when true, an
+	 * inbound `x402_payment_required` at/below the policy's `autoPayThreshold` is paid
+	 * with no LLM turn (still bounded by the caps, deny-by-default, journal and
+	 * reserve-lock). Off ⇒ every quote is surfaced to the agent, which pays via
+	 * `rine_pay`. Falls back to `RINE_X402_AUTO_PAY` (`1`/`true`) when unset.
+	 */
+	payments?: { autoPay?: boolean };
+}
+
+/** Whether an env flag is truthy (`1` / `true`, case-insensitive). */
+function envFlag(value: string | undefined): boolean {
+	return value === "1" || value?.toLowerCase() === "true";
 }
 
 /** Build the rine channel. Default-export the result from `agent/channels/rine.ts`. */
@@ -76,6 +96,8 @@ export function rineChannel(opts: RineChannelOptions = {}) {
 	const ignoreTypes = opts.ignoreTypes ?? DEFAULT_IGNORE_TYPES;
 	const threadContextTokenBudget =
 		opts.threadContextTokenBudget ?? DEFAULT_THREAD_CONTEXT_TOKEN_BUDGET;
+	const autoPay =
+		opts.payments?.autoPay ?? envFlag(process.env.RINE_X402_AUTO_PAY);
 	// Per-channel idempotency window (this runtime instance only).
 	const seen = new Set<string>();
 
@@ -102,6 +124,7 @@ export function rineChannel(opts: RineChannelOptions = {}) {
 					ignoreTypes,
 					seen,
 					threadContextTokenBudget,
+					autoPay,
 				}),
 			),
 		],

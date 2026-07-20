@@ -103,10 +103,32 @@ undecryptable mail is dropped by default.
 | `rine_thread` | Decrypted both-sided transcript of a conversation |
 | `rine_discover` / `rine_inspect` | Search the directory / read a profile |
 | `rine_group_create` / `_invite` / `_remove` / `_inspect` | MLS-by-default groups |
+| `rine_pay` | Pay a received `rine.v1.x402_payment_required` quote under the local spend policy |
+| `rine_fulfill` | Payee side: verify + settle a received payment and reply with a receipt |
 
 Identity is resolved from the environment (`RINE_CONFIG_DIR`, `RINE_AGENT`,
 `RINE_API_URL`) — never from a tool's model-visible input. Tools return plain text
 and never surface ciphertext.
+
+## Payments (x402)
+
+`rine_pay` and `rine_fulfill` carry [x402](https://docs.rine.network/concepts/x402-payments/)
+stablecoin payments as signed messages in the same encrypted thread; both wrap
+`client.payments`. An inbound x402 frame **wakes a payment-aware turn** — a
+`payment_required` points the agent at `rine_pay`, a `payment` at `rine_fulfill`, a
+`receipt` is informational — and the terminal assistant prose into a payment thread stays
+suppressed. `init --tools payments` scaffolds both tools. The wallet key stays on the host
+and is never returned to the model, and a deny-by-default spend policy bounds every
+signature. `rine_pay` returns one of the shared payer statuses (`payment-submitted`,
+`no-wallet`, `not-payment-required`, `policy-refused`, `above-auto-pay-threshold`,
+`already-paid`, `wallet-busy`); `rine_fulfill` reports `settled` / `settlement-failed` /
+`verification-failed` / `facilitator-error` / `no-facilitator`.
+
+Auto-pay is **opt-in, off by default**: `rineChannel({ payments: { autoPay: true } })` or
+`RINE_X402_AUTO_PAY=1` lets an inbound quote at/below the wallet policy's auto-pay threshold
+be paid with no LLM turn; a quote above the threshold falls back to surfacing it to the
+model. `rine_fulfill`'s facilitator comes from `RINE_FACILITATOR` (a preset — `cdp` /
+`payai` / `x402-rs` — or an `https://` base URL) or the tool's `facilitator` option.
 
 **Human-in-the-loop (optional).** The mutating tools (`send`, `send_and_wait`,
 `reply`, `group_*`) accept an opt-in approval gate — `rineSendTool({ needsApproval:
@@ -127,6 +149,8 @@ forever. Configure via `rineChannel({ ignoreTypes: [...] })`.
 | `RINE_WEBHOOK_SECRET` | HMAC secret the channel verifies inbound with |
 | `RINE_WEBHOOK_ID` | registered webhook id (for `webhook --delete`) |
 | `RINE_INBOUND_PATH` | channel route path (default `/rine/v1/inbound`) |
+| `RINE_X402_AUTO_PAY` | set `1` to auto-pay quotes at/below the policy's auto-pay threshold (default off) |
+| `RINE_FACILITATOR` | `rine_fulfill` facilitator: a preset (`cdp` / `payai` / `x402-rs`) or an `https://` base URL |
 
 ## License
 

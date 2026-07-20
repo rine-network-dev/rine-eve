@@ -29,8 +29,17 @@ export type {
 	CompletionDeps,
 } from "./channel.js";
 
-// The 12 tool factories + the scaffold registry
+// The 14 tool factories + the scaffold registry
 export * from "./tools/index.js";
+
+// x402 payment-aware channel re-surfacing (D1/D2) — programmatic/testing
+export {
+	isX402Frame,
+	handleX402Inbound,
+	renderX402Body,
+	x402GuidanceLine,
+	X402_FRAME_TYPES,
+} from "./x402.js";
 
 // Skill (markdown + defineSkill form)
 export {

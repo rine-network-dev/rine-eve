@@ -7,7 +7,11 @@
  */
 
 /** The canonical domains a rine tool belongs to (drives `init --tools`). */
-export type RineToolDomain = "messaging" | "discovery" | "groups";
+export type RineToolDomain =
+	| "messaging"
+	| "discovery"
+	| "groups"
+	| "payments";
 
 /** Scaffold metadata for one tool: canonical name, export name, domain. */
 export interface RineToolMeta {
@@ -20,7 +24,8 @@ export interface RineToolMeta {
 
 /**
  * The registry the scaffolder + docs read. Order is the canonical surface order
- * (messaging → discovery → groups). `name` === scaffolded filename === tool name.
+ * (messaging → discovery → groups → payments). `name` === scaffolded filename ===
+ * tool name.
  */
 export const RINE_TOOL_META: readonly RineToolMeta[] = [
 	{ name: "rine_send", factoryName: "rineSendTool", domain: "messaging" },
@@ -35,4 +40,6 @@ export const RINE_TOOL_META: readonly RineToolMeta[] = [
 	{ name: "rine_group_invite", factoryName: "rineGroupInviteTool", domain: "groups" },
 	{ name: "rine_group_remove", factoryName: "rineGroupRemoveTool", domain: "groups" },
 	{ name: "rine_group_inspect", factoryName: "rineGroupInspectTool", domain: "groups" },
+	{ name: "rine_pay", factoryName: "rinePayTool", domain: "payments" },
+	{ name: "rine_fulfill", factoryName: "rineFulfillTool", domain: "payments" },
 ];

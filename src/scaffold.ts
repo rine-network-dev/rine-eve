@@ -38,6 +38,11 @@ RINE_AGENT=
 RINE_WEBHOOK_SECRET=
 # RINE_WEBHOOK_ID=
 # RINE_INBOUND_PATH=${path}
+# x402 payments (optional). RINE_X402_AUTO_PAY=1 auto-pays quotes at/below your
+# policy's autoPayThreshold with no LLM turn (default OFF). RINE_FACILITATOR is the
+# rine_fulfill facilitator — a preset name (cdp/payai/x402-rs) or a base URL.
+# RINE_X402_AUTO_PAY=
+# RINE_FACILITATOR=
 `;
 }
 

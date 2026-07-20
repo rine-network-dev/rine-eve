@@ -18,6 +18,21 @@
 /** Sentinel marking our token payload, robust to Eve's `<channel>:` namespacing. */
 const TOKEN_MARKER = "r1.";
 
+/** Bound on the per-runtime `seen` dedupe set before it is cleared wholesale. */
+export const SEEN_CAP = 5000;
+
+/**
+ * Record a handled message id in the bounded per-runtime dedupe set. The set is
+ * cleared wholesale when it reaches {@link SEEN_CAP} (a coarse but allocation-free
+ * eviction — the server-side `delivered_at` ack is the durable dedupe). A no-op
+ * when no set is provided.
+ */
+export function rememberSeen(seen: Set<string> | undefined, id: string): void {
+	if (!seen) return;
+	if (seen.size >= SEEN_CAP) seen.clear();
+	seen.add(id);
+}
+
 /** What a decoded continuation token yields. */
 export interface ReplyContext {
 	/** The rine conversation id to thread the reply into. */
@@ -29,6 +44,14 @@ export interface ReplyContext {
 	 * Absent for legacy 2-field tokens → caller falls back to send()+parent.
 	 */
 	readonly messageId?: string;
+	/**
+	 * Marks a session started by an inbound x402 payment frame (D1). The terminal
+	 * assistant message is NEVER prose-replied into a payment thread — that would
+	 * corrupt the handshake. The signed payment / receipt is transmitted in-thread
+	 * by the pay / fulfill tools instead, so `processCompletion` short-circuits when
+	 * this is set.
+	 */
+	readonly x402?: boolean;
 }
 
 /** base64url (no padding) encode of a UTF-8 string. */
@@ -50,14 +73,17 @@ export function encodeReplyToken(
 	conversationId: string,
 	replyTarget: string,
 	messageId?: string,
+	opts: { x402?: boolean } = {},
 ): string {
-	const payload: { c: string; r: string; m?: string } = {
+	const payload: { c: string; r: string; m?: string; x?: 1 } = {
 		c: conversationId,
 		r: replyTarget,
 	};
 	// Only emit `m` when present so older decoders stay tolerant and tokens
 	// remain minimal for legacy callers.
 	if (messageId) payload.m = messageId;
+	// The x402 no-prose-reply flag rides as a compact `x:1` when set.
+	if (opts.x402) payload.x = 1;
 	return `${TOKEN_MARKER}${b64urlEncode(JSON.stringify(payload))}`;
 }
 
@@ -81,7 +107,8 @@ export function decodeReplyToken(token: string | undefined): ReplyContext | null
 		// `m` is optional; legacy 2-field tokens leave messageId undefined.
 		const m = payload?.m;
 		const messageId = typeof m === "string" && m.length > 0 ? m : undefined;
-		return { conversationId, replyTarget, messageId };
+		const x402 = payload?.x === 1 ? true : undefined;
+		return { conversationId, replyTarget, messageId, x402 };
 	} catch {
 		return null;
 	}

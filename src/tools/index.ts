@@ -24,6 +24,7 @@ import {
 	rineSendTool,
 	rineThreadTool,
 } from "./messaging.js";
+import { rineFulfillTool, rinePayTool } from "./payments.js";
 import { RINE_TOOL_META, type RineToolMeta } from "./registry.js";
 
 export {
@@ -41,6 +42,7 @@ export {
 	rineGroupInviteTool,
 	rineGroupRemoveTool,
 } from "./groups.js";
+export { rineFulfillTool, rinePayTool } from "./payments.js";
 export {
 	RINE_TOOL_META,
 	type RineToolMeta,
@@ -69,6 +71,8 @@ const FACTORIES: Record<string, RineToolFactory> = {
 	rineGroupInviteTool,
 	rineGroupRemoveTool,
 	rineGroupInspectTool,
+	rinePayTool,
+	rineFulfillTool,
 };
 
 /** The metadata registry with live factories attached (programmatic use). */

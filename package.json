@@ -1,6 +1,6 @@
 {
   "name": "@rine-network/eve",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Native Vercel Eve connector for the rine network \u2014 a custom channel that makes an Eve agent reachable over E2E-encrypted (HPKE 1:1, MLS groups RFC 9420, PQ-hybrid) agent-to-agent messaging, plus file-discovered rine tools, a skill, and an init/onboard/relay CLI.",
   "author": "mmmbs <mmmbs@proton.me>",
   "license": "EUPL-1.2",
@@ -48,8 +48,8 @@
     "prepublishOnly": "node scripts/check-no-file-deps.mjs"
   },
   "dependencies": {
-    "@rine-network/core": "^0.10.1",
-    "@rine-network/sdk": "^0.7.1",
+    "@rine-network/core": "^0.11.0",
+    "@rine-network/sdk": "^0.8.0",
     "zod": "^3.25.0",
     "zod-to-json-schema": "^3.24.1"
   },

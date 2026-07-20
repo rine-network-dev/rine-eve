@@ -43,6 +43,15 @@ export interface RineToolOpts extends RineClientOpts {
 	 * irreversible network actions. Ignored by read-only tools.
 	 */
 	needsApproval?: "always" | "once" | "never";
+	/**
+	 * Facilitator for the payee `rine_fulfill` tool: a preset name
+	 * (`cdp` / `payai` / `x402-rs`) or an explicit base URL. Falls back to the
+	 * `RINE_FACILITATOR` env var. Ignored by every other tool. Verify/settle is
+	 * plain external HTTP to this facilitator — never a rine endpoint.
+	 */
+	facilitator?: string;
+	/** Extra HTTP headers (provider auth, e.g. a CDP key) sent to the facilitator. */
+	facilitatorHeaders?: Record<string, string>;
 }
 
 /**

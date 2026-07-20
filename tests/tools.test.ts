@@ -137,10 +137,12 @@ describe("rine tools (env identity via injected client)", () => {
 		expect(out).toContain("[unavailable]");
 	});
 
-	it("RINE_TOOLS has 12 tools incl. rine_thread (registry/factory in sync)", () => {
-		expect(RINE_TOOLS).toHaveLength(12);
+	it("RINE_TOOLS has 14 tools incl. the payment tools (registry/factory in sync)", () => {
+		expect(RINE_TOOLS).toHaveLength(14);
 		const names = RINE_TOOLS.map((t) => t.name);
 		expect(names).toContain("rine_thread");
+		expect(names).toContain("rine_pay");
+		expect(names).toContain("rine_fulfill");
 		// Every registry entry resolves to a live factory.
 		for (const t of RINE_TOOLS) expect(typeof t.factory).toBe("function");
 	});
