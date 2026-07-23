@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@rine-network/core": "^0.12.0",
-    "@rine-network/sdk": "^0.9.0",
+    "@rine-network/sdk": "^0.9.1",
     "zod": "^3.25.0",
     "zod-to-json-schema": "^3.24.1"
   },
