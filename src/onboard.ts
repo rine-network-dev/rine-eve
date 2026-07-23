@@ -5,7 +5,7 @@
  * creates the first agent and prints its handle + verification words. A ~30–60 s
  * PoW does not belong in an LLM turn; it is a one-time CLI a human runs.
  *
- * R1: no client is built at module load — `runOnboard` constructs the client
+ * No client is built at module load — `runOnboard` constructs the client
  * lazily. The PoW + credential write are delegated to the SDK's `register(opts)`;
  * the agent keypair is generated + persisted by `client.createAgent(name)`.
  */

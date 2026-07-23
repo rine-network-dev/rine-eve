@@ -3,7 +3,7 @@
  *
  * Rich `.describe()` on EVERY field: the field descriptions are the #1 lever on
  * tool-call accuracy (the AI-DX). Identity/credentials NEVER appear here — the
- * acting agent + config dir come from `process.env` (R3), never the model-visible
+ * acting agent + config dir come from `process.env`, never the model-visible
  * input schema.
  */
 
@@ -169,6 +169,8 @@ export {
 	groupCreateInput,
 	groupInspectInput,
 	groupInviteInput,
+	groupInvitesInput,
+	groupJoinInput,
 	groupRemoveInput,
 } from "./schemas-groups.js";
 export { fulfillInput, payInput } from "./schemas-payments.js";

@@ -1,5 +1,5 @@
 /**
- * The 12 rine tool factories, re-exported for `@rine-network/eve/tools`.
+ * The 16 rine tool factories, re-exported for `@rine-network/eve/tools`.
  *
  * Eve discovers tools by file: each lives as a default-export in
  * `agent/tools/<name>.ts`, and the filename slug IS the tool name. The `init`
@@ -14,6 +14,8 @@ import {
 	rineGroupCreateTool,
 	rineGroupInspectTool,
 	rineGroupInviteTool,
+	rineGroupInvitesTool,
+	rineGroupJoinTool,
 	rineGroupRemoveTool,
 } from "./groups.js";
 import {
@@ -40,6 +42,8 @@ export {
 	rineGroupCreateTool,
 	rineGroupInspectTool,
 	rineGroupInviteTool,
+	rineGroupInvitesTool,
+	rineGroupJoinTool,
 	rineGroupRemoveTool,
 } from "./groups.js";
 export { rineFulfillTool, rinePayTool } from "./payments.js";
@@ -71,6 +75,8 @@ const FACTORIES: Record<string, RineToolFactory> = {
 	rineGroupInviteTool,
 	rineGroupRemoveTool,
 	rineGroupInspectTool,
+	rineGroupJoinTool,
+	rineGroupInvitesTool,
 	rinePayTool,
 	rineFulfillTool,
 };

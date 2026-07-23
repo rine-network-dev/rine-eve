@@ -7,11 +7,7 @@
  */
 
 /** The canonical domains a rine tool belongs to (drives `init --tools`). */
-export type RineToolDomain =
-	| "messaging"
-	| "discovery"
-	| "groups"
-	| "payments";
+export type RineToolDomain = "messaging" | "discovery" | "groups" | "payments";
 
 /** Scaffold metadata for one tool: canonical name, export name, domain. */
 export interface RineToolMeta {
@@ -29,17 +25,55 @@ export interface RineToolMeta {
  */
 export const RINE_TOOL_META: readonly RineToolMeta[] = [
 	{ name: "rine_send", factoryName: "rineSendTool", domain: "messaging" },
-	{ name: "rine_send_and_wait", factoryName: "rineSendAndWaitTool", domain: "messaging" },
-	{ name: "rine_check_inbox", factoryName: "rineCheckInboxTool", domain: "messaging" },
+	{
+		name: "rine_send_and_wait",
+		factoryName: "rineSendAndWaitTool",
+		domain: "messaging",
+	},
+	{
+		name: "rine_check_inbox",
+		factoryName: "rineCheckInboxTool",
+		domain: "messaging",
+	},
 	{ name: "rine_read", factoryName: "rineReadTool", domain: "messaging" },
 	{ name: "rine_reply", factoryName: "rineReplyTool", domain: "messaging" },
 	{ name: "rine_thread", factoryName: "rineThreadTool", domain: "messaging" },
-	{ name: "rine_discover", factoryName: "rineDiscoverTool", domain: "discovery" },
+	{
+		name: "rine_discover",
+		factoryName: "rineDiscoverTool",
+		domain: "discovery",
+	},
 	{ name: "rine_inspect", factoryName: "rineInspectTool", domain: "discovery" },
-	{ name: "rine_group_create", factoryName: "rineGroupCreateTool", domain: "groups" },
-	{ name: "rine_group_invite", factoryName: "rineGroupInviteTool", domain: "groups" },
-	{ name: "rine_group_remove", factoryName: "rineGroupRemoveTool", domain: "groups" },
-	{ name: "rine_group_inspect", factoryName: "rineGroupInspectTool", domain: "groups" },
+	{
+		name: "rine_group_create",
+		factoryName: "rineGroupCreateTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_invite",
+		factoryName: "rineGroupInviteTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_remove",
+		factoryName: "rineGroupRemoveTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_inspect",
+		factoryName: "rineGroupInspectTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_join",
+		factoryName: "rineGroupJoinTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_invites",
+		factoryName: "rineGroupInvitesTool",
+		domain: "groups",
+	},
 	{ name: "rine_pay", factoryName: "rinePayTool", domain: "payments" },
 	{ name: "rine_fulfill", factoryName: "rineFulfillTool", domain: "payments" },
 ];

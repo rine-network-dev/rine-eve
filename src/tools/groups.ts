@@ -1,12 +1,17 @@
 /**
- * The 4 group tool factories: `rine_group_create`, `rine_group_invite`,
- * `rine_group_remove`, `rine_group_inspect`. Groups are MLS-by-default.
+ * The 6 group tool factories: `rine_group_create`, `rine_group_invite`,
+ * `rine_group_remove`, `rine_group_inspect`, `rine_group_join`,
+ * `rine_group_invites`. Groups are MLS-by-default.
  *
  * The TS SDK's `groups.invite`/`removeMember` take BRANDED UUIDs positionally, so
  * invite/remove/inspect PRE-RESOLVE handle→UUID here:
  *   - a group → `groups.list()` + local match (`findGroup`),
  *   - an agent → `resolveToUuid` (WebFinger) → its UUID (or pass a UUID through),
  *     so unlisted agents resolve too.
+ * `join` resolves a handle the same way but against the caller's PENDING
+ * INVITES (`groups.listInvites()`) — an invitee isn't a member yet, so it can't
+ * appear in `groups.list()`. A bare UUID always passes through unchanged (the
+ * path for a publicly discovered open-enrollment group with no invite record).
  */
 
 import { UUID_RE, normalizeHandle, resolveToUuid } from "@rine-network/core";
@@ -14,15 +19,22 @@ import { NotFoundError, asAgentUuid, asGroupUuid } from "@rine-network/sdk";
 import type { AsyncRineClient } from "@rine-network/sdk";
 import { defineTool } from "eve/tools";
 import { STRING_OUTPUT, jsonSchema } from "../_zod.js";
-import { groupIsMls, renderGroup } from "../format.js";
+import {
+	groupIsMls,
+	renderGroup,
+	renderInvites,
+	renderJoinResult,
+} from "../format.js";
 import {
 	groupCreateInput,
 	groupInspectInput,
 	groupInviteInput,
+	groupInvitesInput,
+	groupJoinInput,
 	groupRemoveInput,
 } from "../schemas.js";
 import { type RineToolOpts, approvalGate, makeExecute } from "../tool.js";
-import type { GroupRead } from "../types.js";
+import type { GroupRead, JoinRequestRead } from "../types.js";
 
 /** True for a bare UUID string (no `@`, matches the rine UUID shape). */
 function isUuid(s: string): boolean {
@@ -67,6 +79,47 @@ async function resolveAgentUuid(apiUrl: string, target: string) {
 	return asAgentUuid(await resolveToUuid(apiUrl, target));
 }
 
+/** Match a pending invite among the caller's invites by UUID, full handle, or bare name. */
+function findInvite(
+	invites: readonly JoinRequestRead[],
+	target: string,
+): JoinRequestRead | undefined {
+	if (isUuid(target)) return invites.find((inv) => inv.group_id === target);
+	if (!target.includes("@")) {
+		const want = bareLocalName(target);
+		return invites.find(
+			(inv) =>
+				(inv.group_handle && bareLocalName(inv.group_handle) === want) ||
+				inv.group_name === target,
+		);
+	}
+	const want = normalizeHandle(target.startsWith("#") ? target : `#${target}`);
+	return invites.find(
+		(inv) => inv.group_handle && normalizeHandle(inv.group_handle) === want,
+	);
+}
+
+/**
+ * Resolve a group handle/UUID to its `GroupUuid` for `rine_group_join`. A bare
+ * UUID passes straight through (the open-enrollment discovery case); a handle
+ * is resolved against the caller's PENDING INVITES, since an invitee isn't a
+ * member yet and so can't appear in `groups.list()`.
+ */
+async function resolveGroupUuidForJoin(
+	client: AsyncRineClient,
+	target: string,
+) {
+	if (isUuid(target)) return asGroupUuid(target);
+	const invites = await client.groups.listInvites();
+	const match = findInvite(invites, target);
+	if (!match) {
+		throw new NotFoundError(
+			`No pending invite for group '${target}' — pass the group UUID directly for an open-enrollment group, or check rine_group_invites`,
+		);
+	}
+	return asGroupUuid(match.group_id);
+}
+
 /** `rine_group_create` — create an MLS-by-default coordination group. */
 export function rineGroupCreateTool(opts: RineToolOpts = {}) {
 	return defineTool({
@@ -75,18 +128,16 @@ export function rineGroupCreateTool(opts: RineToolOpts = {}) {
 		inputSchema: jsonSchema(groupCreateInput),
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
-		execute: makeExecute(groupCreateInput, opts,
-			async (client, i) => {
-				const g = await client.groups.create(i.name, {
-					description: i.description,
-					enrollment: i.enrollment,
-					visibility: i.visibility,
-					enableMls: i.enableMls,
-				});
-				const mode = groupIsMls(g) ? "MLS" : "sender-key";
-				return `Created group ${g.handle} (id ${g.id}, ${mode} E2EE, enrollment ${g.enrollment_policy}).`;
-			},
-		),
+		execute: makeExecute(groupCreateInput, opts, async (client, i) => {
+			const g = await client.groups.create(i.name, {
+				description: i.description,
+				enrollment: i.enrollment,
+				visibility: i.visibility,
+				enableMls: i.enableMls,
+			});
+			const mode = groupIsMls(g) ? "MLS" : "sender-key";
+			return `Created group ${g.handle} (id ${g.id}, ${mode} E2EE, enrollment ${g.enrollment_policy}).`;
+		}),
 	});
 }
 
@@ -98,16 +149,14 @@ export function rineGroupInviteTool(opts: RineToolOpts = {}) {
 		inputSchema: jsonSchema(groupInviteInput),
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
-		execute: makeExecute(groupInviteInput, opts,
-			async (client, i, apiUrl) => {
-				const groupId = await resolveGroupUuid(client, i.group);
-				const agentId = await resolveAgentUuid(apiUrl, i.agentToInvite);
-				const result = await client.groups.invite(groupId, agentId, {
-					message: i.message,
-				});
-				return `Invited ${i.agentToInvite} to ${i.group} (status ${result.status}).`;
-			},
-		),
+		execute: makeExecute(groupInviteInput, opts, async (client, i, apiUrl) => {
+			const groupId = await resolveGroupUuid(client, i.group);
+			const agentId = await resolveAgentUuid(apiUrl, i.agentToInvite);
+			const result = await client.groups.invite(groupId, agentId, {
+				message: i.message,
+			});
+			return `Invited ${i.agentToInvite} to ${i.group} (status ${result.status}).`;
+		}),
 	});
 }
 
@@ -119,14 +168,12 @@ export function rineGroupRemoveTool(opts: RineToolOpts = {}) {
 		inputSchema: jsonSchema(groupRemoveInput),
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
-		execute: makeExecute(groupRemoveInput, opts,
-			async (client, i, apiUrl) => {
-				const groupId = await resolveGroupUuid(client, i.group);
-				const agentId = await resolveAgentUuid(apiUrl, i.agentId);
-				await client.groups.removeMember(groupId, agentId);
-				return `Removed ${i.agentId} from ${i.group}; keys rotated.`;
-			},
-		),
+		execute: makeExecute(groupRemoveInput, opts, async (client, i, apiUrl) => {
+			const groupId = await resolveGroupUuid(client, i.group);
+			const agentId = await resolveAgentUuid(apiUrl, i.agentId);
+			await client.groups.removeMember(groupId, agentId);
+			return `Removed ${i.agentId} from ${i.group}; keys rotated.`;
+		}),
 	});
 }
 
@@ -137,17 +184,45 @@ export function rineGroupInspectTool(opts: RineToolOpts = {}) {
 			"Show a group's details and encryption status (MLS vs sender-key) so you can confirm your agent can read and post to it. Accepts a group handle or UUID.",
 		inputSchema: jsonSchema(groupInspectInput),
 		outputSchema: STRING_OUTPUT,
-		execute: makeExecute(groupInspectInput, opts,
-			async (client, i) => {
-				const page = await client.groups.list();
-				const match = findGroup(page.items, i.group);
-				if (!match) {
-					throw new NotFoundError(
-						`No group '${i.group}' among the groups this agent belongs to`,
-					);
-				}
-				return renderGroup(match);
-			},
-		),
+		execute: makeExecute(groupInspectInput, opts, async (client, i) => {
+			const page = await client.groups.list();
+			const match = findGroup(page.items, i.group);
+			if (!match) {
+				throw new NotFoundError(
+					`No group '${i.group}' among the groups this agent belongs to`,
+				);
+			}
+			return renderGroup(match);
+		}),
+	});
+}
+
+/** `rine_group_join` — accept an invite (or self-join an open group). */
+export function rineGroupJoinTool(opts: RineToolOpts = {}) {
+	return defineTool({
+		description:
+			"Join a group: accept a pending invite, or self-join a publicly discovered open-enrollment group by UUID. Instant for open enrollment; for closed/majority/unanimity groups this submits a request that members vote on. This is a real, irreversible network action.",
+		inputSchema: jsonSchema(groupJoinInput),
+		outputSchema: STRING_OUTPUT,
+		needsApproval: approvalGate(opts),
+		execute: makeExecute(groupJoinInput, opts, async (client, i) => {
+			const groupId = await resolveGroupUuidForJoin(client, i.group);
+			const result = await client.groups.join(groupId, { message: i.message });
+			return renderJoinResult(i.group, result);
+		}),
+	});
+}
+
+/** `rine_group_invites` — list the caller's pending group invites. */
+export function rineGroupInvitesTool(opts: RineToolOpts = {}) {
+	return defineTool({
+		description:
+			"List your agent's pending group invites — group, who invited you, status, and any message. Join one with rine_group_join using the group handle or id.",
+		inputSchema: jsonSchema(groupInvitesInput),
+		outputSchema: STRING_OUTPUT,
+		execute: makeExecute(groupInvitesInput, opts, async (client) => {
+			const invites = await client.groups.listInvites();
+			return renderInvites(invites);
+		}),
 	});
 }

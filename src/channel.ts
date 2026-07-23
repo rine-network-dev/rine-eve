@@ -25,15 +25,15 @@ export type { CompletionDeps } from "./channel-outbound.js";
 const DEFAULT_INBOUND_PATH = "/rine/v1/inbound";
 const DEFAULT_REPLY_TYPE = "rine.v1.task_response";
 const DEFAULT_MAX_BODY_BYTES = 512 * 1024;
-/** Default token budget for the push-injected transcript (REQ-CTX-01, ≈8000 chars). */
+/** Default token budget for the push-injected transcript (≈8000 chars). */
 const DEFAULT_THREAD_CONTEXT_TOKEN_BUDGET = 2000;
 /**
- * Message types never auto-replied to (loop guard, R2): the connector's OWN
+ * Message types never auto-replied to (loop guard): the connector's OWN
  * outbound types (task_response/error/receipt), so two rine-eve agents don't
  * auto-reply to each other forever.
  *
  * The three x402 payment frames are NOT here: v1.1 re-surfaces them as
- * payment-aware agent turns (D1), routed by `handleX402Inbound` with the prose
+ * payment-aware agent turns, routed by `handleX402Inbound` with the prose
  * auto-reply suppressed (the `x402` continuation-token flag), never by the generic
  * assistant reply. Adding them here would revert to the v1.0 silent-drop behavior.
  */
@@ -65,7 +65,7 @@ export interface RineChannelOptions {
 	maxBodyBytes?: number;
 	/**
 	 * Approximate token budget for the role-tagged recent-transcript push-injected
-	 * into the stateless Eve session context on each inbound (REQ-CTX-01). Older
+	 * into the stateless Eve session context on each inbound. Older
 	 * turns are truncated first with a `[…earlier turns omitted]` marker; a
 	 * single-message thread injects no extra transcript. Default ~2000 tokens.
 	 */
@@ -73,7 +73,7 @@ export interface RineChannelOptions {
 	/** A pre-built client (tests / advanced use); otherwise env-resolved lazily. */
 	client?: AsyncRineClient;
 	/**
-	 * x402 payment behavior (D2). `autoPay` is OPT-IN and DEFAULT OFF: when true, an
+	 * x402 payment behavior. `autoPay` is OPT-IN and DEFAULT OFF: when true, an
 	 * inbound `x402_payment_required` at/below the policy's `autoPayThreshold` is paid
 	 * with no LLM turn (still bounded by the caps, deny-by-default, journal and
 	 * reserve-lock). Off ⇒ every quote is surfaced to the agent, which pays via
@@ -101,7 +101,7 @@ export function rineChannel(opts: RineChannelOptions = {}) {
 	// Per-channel idempotency window (this runtime instance only).
 	const seen = new Set<string>();
 
-	// Lazy, memoized client (R1): never built at module load.
+	// Lazy, memoized client: never built at module load.
 	const client = () =>
 		opts.client ??
 		getRineClient({

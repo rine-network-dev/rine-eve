@@ -1,5 +1,5 @@
 /**
- * `formatError(err)` — invariant R2: turn any thrown SDK error into a readable
+ * `formatError(err)` — turns any thrown SDK error into a readable
  * string for the LLM, never a stack trace. Tools wrap their one `await client.*`
  * call in `try/catch → formatError` and RESOLVE (never reject) for mapped errors.
  *

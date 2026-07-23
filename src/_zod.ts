@@ -9,7 +9,7 @@
  * accuracy) and parse the raw model input with the zod schema inside `execute`
  * (applying defaults + coercion). One source of truth (zod), version-independent.
  *
- * Every tool's `outputSchema` is `string` (R4) — a tool returns clean text, so
+ * Every tool's `outputSchema` is `string` — a tool returns clean text, so
  * ciphertext can never ride a struct field.
  */
 

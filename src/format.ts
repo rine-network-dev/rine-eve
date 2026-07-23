@@ -2,7 +2,7 @@
  * Pure render functions: turn SDK return values into the human-readable strings
  * tools + the channel hand to the LLM / send back over rine.
  *
- * Invariant R4: these read ONLY `plaintext` / `decrypt_error` / verification
+ * These read ONLY `plaintext` / `decrypt_error` / verification
  * fields. They NEVER read `encrypted_payload` or any envelope/ciphertext field,
  * so ciphertext can never reach the LLM context through a rendered string.
  */
@@ -13,6 +13,8 @@ import type {
 	AgentSummary,
 	DecryptedMessage,
 	GroupRead,
+	JoinRequestRead,
+	JoinResult,
 } from "./types.js";
 
 /** One thread turn as a role-tagged line: `[sent] you: …` / `[received] alice@org: …`. */
@@ -128,7 +130,7 @@ export function renderProfile(p: AgentProfile): string {
 /**
  * Self-diagnose a group's E2EE mode. Uses `mls_group_id !== null`, OR the
  * explicit `mls_enabled`/`mls_pending` flags. With MLS support present this is a
- * CAPABILITY flag, not a failure flag (R9).
+ * CAPABILITY flag, not a failure flag.
  */
 export function groupIsMls(g: GroupRead): boolean {
 	return Boolean(g.mls_enabled || g.mls_group_id !== null || g.mls_pending);
@@ -136,7 +138,7 @@ export function groupIsMls(g: GroupRead): boolean {
 
 /**
  * A group rendered for `rine_group_inspect`. Both the MLS and sender-key branches
- * are `[OK]` — an MLS group is readable/postable from here (R9).
+ * are `[OK]` — an MLS group is readable/postable from here.
  */
 export function renderGroup(g: GroupRead): string {
 	const lines = [`Group ${g.handle} (id ${g.id})`];
@@ -151,4 +153,24 @@ export function renderGroup(g: GroupRead): string {
 	lines.push(`enrollment: ${g.enrollment_policy}`);
 	lines.push(`visibility: ${g.visibility}`);
 	return lines.join("\n");
+}
+
+/** `rine_group_join` outcome: immediate membership vs a pending vote. */
+export function renderJoinResult(target: string, result: JoinResult): string {
+	if (result.status === "joined") return `Joined ${target}.`;
+	return `Join request for ${target} submitted — pending approval (request ${result.request.id}).`;
+}
+
+/** One pending-invite row: group, inviter, status, and any message. */
+function renderInviteRow(inv: JoinRequestRead): string {
+	const group = inv.group_handle ?? inv.group_name ?? inv.group_id;
+	const from = inv.invited_by ? ` invited by ${inv.invited_by}` : "";
+	const msg = inv.message ? `: "${inv.message}"` : "";
+	return `${group} (status ${inv.status})${from}${msg}`;
+}
+
+/** A numbered list of the caller's pending group invites, or the empty-state line. */
+export function renderInvites(items: readonly JoinRequestRead[]): string {
+	if (items.length === 0) return "No pending group invites.";
+	return items.map((inv, i) => `${i + 1}. ${renderInviteRow(inv)}`).join("\n");
 }

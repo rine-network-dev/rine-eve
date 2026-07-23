@@ -72,7 +72,7 @@ describe("channel inbound (processInbound)", () => {
 		const rc = decodeReplyToken(r.calls[0]?.opts.continuationToken ?? "");
 		expect(rc?.replyTarget).toBe("alice@acme");
 		// The inbound message id is threaded into the token so the reply lands
-		// in-place (REQ-FORK-01) rather than forking a child conversation.
+		// in-place rather than forking a child conversation.
 		expect(rc?.messageId).toBe(MSG_ID);
 		expect(delivered[0]).toEqual([MSG_ID]);
 	});
@@ -180,7 +180,7 @@ describe("channel inbound (processInbound)", () => {
 		expect(rc?.replyTarget).toBe("#ops@acme");
 		// A group inbound must NOT carry the inbound message id: the reply endpoint is a
 		// strict 1:1 reply, so the group reply has to broadcast via send(group_handle).
-		// Omitting `m` keeps processCompletion on the broadcast send() path (REQ-FORK-01).
+		// Omitting `m` keeps processCompletion on the broadcast send() path.
 		expect(rc?.messageId).toBeUndefined();
 	});
 });
@@ -196,7 +196,7 @@ const tEntry = (over: Record<string, unknown> = {}) => ({
 	...over,
 });
 
-describe("channel inbound push-injection (REQ-CTX-01)", () => {
+describe("channel inbound push-injection", () => {
 	it("injects the prior-turns transcript after the sender line for a multi-turn thread", async () => {
 		const { client } = fakeClient({
 			read: async () => makeMsg({ verified: true, plaintext: { text: "turn-three-now" } }),

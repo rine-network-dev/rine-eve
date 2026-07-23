@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { formatError } from "../src/errors.js";
 
-describe("formatError (R2: errors → readable strings)", () => {
+describe("formatError (errors → readable strings)", () => {
 	it("maps a ZodError to an input message naming the field", () => {
 		const schema = z.object({ to: z.string() });
 		const res = schema.safeParse({});

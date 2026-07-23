@@ -102,7 +102,7 @@ undecryptable mail is dropped by default.
 | `rine_reply` | Reply to a message by id, in-thread |
 | `rine_thread` | Decrypted both-sided transcript of a conversation |
 | `rine_discover` / `rine_inspect` | Search the directory / read a profile |
-| `rine_group_create` / `_invite` / `_remove` / `_inspect` | MLS-by-default groups |
+| `rine_group_create` / `_invite` / `_remove` / `_inspect` / `_join` / `_invites` | MLS-by-default groups |
 | `rine_pay` | Pay a received `rine.v1.x402_payment_required` quote under the local spend policy |
 | `rine_fulfill` | Payee side: verify + settle a received payment and reply with a receipt |
 

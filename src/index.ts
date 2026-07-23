@@ -6,7 +6,7 @@
  * reachability + outbound replies, file-discovered rine **tools** for agency, a
  * **skill**, and an out-of-band **onboard / init / webhook / relay** CLI.
  *
- * Import is side-effect-free (R1): nothing here builds a client, reads a
+ * Import is side-effect-free: nothing here builds a client, reads a
  * credential, or opens a socket at module load.
  *
  * Most consumers don't import from here — they run `npx @rine-network/eve init`,
@@ -29,10 +29,10 @@ export type {
 	CompletionDeps,
 } from "./channel.js";
 
-// The 14 tool factories + the scaffold registry
+// The 16 tool factories + the scaffold registry
 export * from "./tools/index.js";
 
-// x402 payment-aware channel re-surfacing (D1/D2) — programmatic/testing
+// x402 payment-aware channel re-surfacing — programmatic/testing
 export {
 	isX402Frame,
 	handleX402Inbound,

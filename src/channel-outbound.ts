@@ -3,8 +3,8 @@
  * unit-testable with fake clients. `channel.ts` wires these to Eve's
  * `message.completed` / failure events; the INBOUND half lives in `channel-core.ts`.
  *
- * On a terminal assistant message (R6) reply back over rine IN-PLACE via the reply
- * endpoint, preserving the inbound conversation (R7); falls back to
+ * On a terminal assistant message, reply back over rine IN-PLACE via the reply
+ * endpoint, preserving the inbound conversation; falls back to
  * `parentConversationId` for legacy tokens. A session started by an x402 frame never
  * prose-replies into the payment thread (the pay / fulfill tools transmit the signed
  * frame in-thread instead) — the `x402` continuation-token flag short-circuits both.
@@ -25,7 +25,7 @@ export interface CompletionDeps {
 
 /**
  * Outbound for `message.completed`: every TERMINAL assistant message (any
- * `finishReason` except the intermediate `tool-calls`, R6) with text becomes a
+ * `finishReason` except the intermediate `tool-calls`) with text becomes a
  * reply. When the continuation token carries the inbound message id we reply
  * IN-PLACE via the reply endpoint (same conversation, no fork) keeping the
  * connector's `replyMessageType` unchanged — type-preserving, so terminal/wake
@@ -38,7 +38,7 @@ export async function processCompletion(deps: CompletionDeps): Promise<void> {
 	if (!deps.message) return;
 	const rc = decodeReplyToken(deps.continuationToken);
 	if (!rc) return;
-	// D1: a session started by an x402 frame never prose-replies into the payment
+	// A session started by an x402 frame never prose-replies into the payment
 	// thread — the pay / fulfill tools transmit the signed frame in-thread instead.
 	if (rc.x402) return;
 	if (rc.messageId) {

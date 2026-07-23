@@ -1,5 +1,5 @@
 /**
- * x402 payment-aware inbound re-surfacing for the rine channel (D1 + D2).
+ * x402 payment-aware inbound re-surfacing for the rine channel.
  *
  * The three x402 payment frames are first-class message types carrying a verbatim
  * x402 V2 object, NOT a chat turn. v1.0 dropped them wholesale (a stateless gateway
@@ -12,7 +12,7 @@
  *   - `x402_payment`          → the signed authorization + guidance to `rine_fulfill`.
  *   - `x402_receipt`          → the settlement outcome, informational (no reply).
  *
- * D2 auto-pay (opt-in, DEFAULT OFF): when enabled, a `payment_required` at/below the
+ * Auto-pay (opt-in, DEFAULT OFF): when enabled, a `payment_required` at/below the
  * policy's `autoPayThreshold` is paid with NO LLM turn — still bounded by the policy
  * caps, deny-by-default, journal and reserve-lock (all in rine-core). Any decline
  * falls back to surfacing the quote to the model.
@@ -103,7 +103,7 @@ export function x402GuidanceLine(msg: DecryptedMessage): string {
 }
 
 /**
- * D2 auto-pay attempt. Returns `null` when the quote was paid (no session needed),
+ * Auto-pay attempt. Returns `null` when the quote was paid (no session needed),
  * or a one-line decline note when auto-pay was refused or errored (the caller then
  * surfaces the quote to the model). A policy refusal / above-threshold quote is a
  * typed {@link X402Error}; anything else (network, wallet) is reported verbatim.
@@ -149,7 +149,7 @@ async function surfaceX402(
 }
 
 /**
- * Handle a verified inbound x402 frame (D1). `payment_required` may auto-pay (D2)
+ * Handle a verified inbound x402 frame. `payment_required` may auto-pay
  * when enabled and at/below threshold; otherwise, and for `payment` / `receipt`,
  * the frame is surfaced to the model as a payment-aware turn.
  */

@@ -1,5 +1,5 @@
 /**
- * Lazy `AsyncRineClient` construction (invariant R1: side-effect-free import).
+ * Lazy `AsyncRineClient` construction (side-effect-free import).
  *
  * No client is built at module load. The SDK client is created the first time a
  * tool's `execute` (or a channel handler) actually fires, then memoized per
@@ -37,7 +37,7 @@ function cacheKey(configDir: string, apiUrl: string): string {
 /**
  * Get (or lazily build + memoize) the shared `AsyncRineClient` for `opts`,
  * already scoped to `opts.agent` when present. Call ONLY from inside a tool
- * `execute` / a channel handler — never at module top level (R1).
+ * `execute` / a channel handler — never at module top level.
  */
 export function getRineClient(opts: RineClientOpts = {}): AsyncRineClient {
 	const configDir = opts.configDir ?? resolveConfigDir();

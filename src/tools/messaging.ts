@@ -5,7 +5,7 @@
  * `makeExecute` (lazy env client + formatError). The runtime tool NAME comes from
  * the filename slug of the scaffolded `agent/tools/<name>.ts`, not from here.
  *
- * R4 holds throughout: renderers read only plaintext/decrypt_error/verification,
+ * Renderers read only plaintext/decrypt_error/verification,
  * never the ciphertext envelope. `read`/`check_inbox` add a `toModelOutput`
  * redactor as defence-in-depth.
  */

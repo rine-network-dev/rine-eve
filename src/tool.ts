@@ -1,7 +1,7 @@
 /**
  * Shared `defineTool` plumbing every rine tool reuses (no duplicated logic):
- * env-based identity resolution (R3) and the try/catch → `formatError` wrapper
- * (R2 errors→strings, never a reject).
+ * env-based identity resolution and the try/catch → `formatError` wrapper
+ * (errors→strings, never a reject).
  *
  * Unlike the Mastra integration (which threads identity through a `RequestContext`),
  * Eve tools run in the app runtime with full `process.env` access, so identity is
@@ -78,7 +78,7 @@ function resolveAgent(opts: RineToolOpts): string | undefined {
 	return opts.agent ?? process.env.RINE_AGENT ?? undefined;
 }
 
-/** Resolve the effective `AsyncRineClient` for one `execute` call (lazy, R1). */
+/** Resolve the effective `AsyncRineClient` for one `execute` call (lazy). */
 export function resolveClient(opts: RineToolOpts): AsyncRineClient {
 	if (opts.client) {
 		const agent = resolveAgent(opts);
@@ -113,7 +113,7 @@ export function asRecipient(to: string): Recipient {
 }
 
 /**
- * Belt-and-suspenders ciphertext redactor for `read` / `check_inbox` (R4).
+ * Belt-and-suspenders ciphertext redactor for `read` / `check_inbox`.
  * The renderers + `outputSchema: z.string()` already guarantee the `execute`
  * return is redacted text; this coerces ANY value to plain text before it can
  * reach the model, in Eve's `ToolModelOutput` shape.
@@ -136,13 +136,13 @@ export type RineToolBody<I> = (
 /**
  * Build an Eve-tool `execute(input, ctx)` from a zod schema + body, applying:
  *   1. zod `.parse(raw)` of the model input (defaults + coercion + validation),
- *   2. the lazy env-resolved client (R1/R3),
- *   3. the try/catch→formatError contract (R2 — resolves a string, never rejects).
+ *   2. the lazy env-resolved client,
+ *   3. the try/catch→formatError contract (resolves a string, never rejects).
  *
  * Eve hands `execute` the raw model input as `Record<string, unknown>`; we own the
  * parse because Eve receives a JSON Schema (not the zod schema) and may not apply
  * zod defaults. The Eve `ToolContext` is intentionally ignored — rine identity is
- * environment-resolved (R3), not session-scoped.
+ * environment-resolved, not session-scoped.
  */
 export function makeExecute<S extends ZodTypeAny>(
 	schema: S,

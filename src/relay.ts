@@ -5,7 +5,7 @@
  * stands in for the cloud webhook: it polls the agent's inbox and re-POSTs each
  * new message — HMAC-signed with `RINE_WEBHOOK_SECRET` — to the LOCAL channel
  * route. It deliberately reuses the SAME inbound route + HMAC + decrypt path as
- * production (R8); the relay only replaces the transport that carries the
+ * production; the relay only replaces the transport that carries the
  * notification, never the message handling. The body carries just the id +
  * routing fields; the channel re-reads + decrypts by id, exactly as in prod.
  */

@@ -5,7 +5,7 @@
  * by webhook (no daemon, serverless-native). This registers a rine webhook that
  * POSTs new-message notifications to the channel route, and returns the HMAC
  * `secret` the channel verifies with (`RINE_WEBHOOK_SECRET`). `--delete` tears it
- * down. R1: the client is built lazily inside the call.
+ * down. The client is built lazily inside the call.
  */
 
 import { resolveApiUrl, resolveToUuid, UUID_RE } from "@rine-network/core";

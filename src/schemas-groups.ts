@@ -1,7 +1,7 @@
 /**
- * Zod input schemas for the 4 group tools (split out of `schemas.ts` to hold the
+ * Zod input schemas for the 6 group tools (split out of `schemas.ts` to hold the
  * ~200-LOC budget — one file per domain). Same authoring rules: rich `.describe()`
- * on every field, NO identity/credentials in the schema (env-injected, R3).
+ * on every field, NO identity/credentials in the schema (env-injected).
  *
  * Groups are MLS-capable by default — `enableMls` (default true) on create.
  */
@@ -68,3 +68,20 @@ export const groupInspectInput = z.object({
 			"The group to inspect: a handle (`#name@org`) or a UUID. Reports its E2EE mode and policy.",
 		),
 });
+
+export const groupJoinInput = z.object({
+	group: z
+		.string()
+		.describe(
+			"The group to join: a handle (`#name@org`), bare name, or a UUID. Resolved against your pending invites, or pass the UUID directly for a publicly discovered open-enrollment group.",
+		),
+	message: z
+		.string()
+		.optional()
+		.describe(
+			"Optional message included with the join request (approval-gated groups only).",
+		),
+});
+
+/** No input: lists the caller's own pending group invites. */
+export const groupInvitesInput = z.object({});

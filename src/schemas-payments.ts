@@ -1,8 +1,8 @@
 /**
  * Zod input schemas for the 2 x402 payment tools (split out of `schemas.ts` to
  * hold the ~200-LOC budget — one file per domain). Same authoring rules: rich
- * `.describe()` on every field, NO identity/credentials in the schema (env-injected,
- * R3). The facilitator is infra config, resolved from the tool factory / env —
+ * `.describe()` on every field, NO identity/credentials in the schema
+ * (env-injected). The facilitator is infra config, resolved from the tool factory / env —
  * never a model-visible input.
  */
 

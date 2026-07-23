@@ -12,10 +12,10 @@ import { decodeReplyToken, encodeReplyToken } from "../src/inbound.js";
 import { fakeClient, makeMsg } from "./helpers.js";
 
 /**
- * x402 v1.1 payment-aware re-surfacing (D1/D2). The three x402 frames are no longer
+ * x402 v1.1 payment-aware re-surfacing. The three x402 frames are no longer
  * in DEFAULT_IGNORE_TYPES — they become structured agent turns routed to the pay /
  * fulfill tools, while the terminal assistant PROSE stays suppressed in every case
- * (the guard hazard never re-arms). D2 auto-pay is opt-in and default OFF.
+ * (the guard hazard never re-arms). Auto-pay is opt-in and default OFF.
  */
 
 const SECRET = "whsec";
@@ -92,7 +92,7 @@ function mkDeps(
 	};
 }
 
-describe("x402 re-surface (D1) — payment frames become tool-driven turns", () => {
+describe("x402 re-surface — payment frames become tool-driven turns", () => {
 	it("payment_required starts a payment-aware session with the pay guidance, no prose reply", async () => {
 		const { client, replies, sends, delivered } = fakeClient({
 			read: async () =>
@@ -180,7 +180,7 @@ describe("x402 re-surface (D1) — payment frames become tool-driven turns", () 
 	});
 });
 
-describe("x402 auto-pay (D2) — opt-in, default OFF, threshold-bounded", () => {
+describe("x402 auto-pay — opt-in, default OFF, threshold-bounded", () => {
 	it("auto-pays a quote and skips the session when enabled", async () => {
 		const { client, payments, delivered } = fakeClient({
 			read: async () =>

@@ -4,6 +4,8 @@ import {
 	rineCheckInboxTool,
 	rineDiscoverTool,
 	rineGroupInspectTool,
+	rineGroupInvitesTool,
+	rineGroupJoinTool,
 	rineInspectTool,
 	rineReadTool,
 	rineSendTool,
@@ -31,7 +33,10 @@ describe("rine tools (env identity via injected client)", () => {
 		const { client, sends } = fakeClient({
 			send: async () => ({ id: "m9", conversation_id: "c9" }),
 		});
-		const out = await run(rineSendTool({ client }), { to: "bob@acme", body: "hi" });
+		const out = await run(rineSendTool({ client }), {
+			to: "bob@acme",
+			body: "hi",
+		});
 		expect(out).toContain("Sent message m9");
 		expect(out).toContain("conversation c9");
 		expect(sends.length).toBe(0); // overridden send doesn't push, but was called
@@ -49,17 +54,20 @@ describe("rine tools (env identity via injected client)", () => {
 		expect(seenType).toBe("rine.v1.task_request");
 	});
 
-	it("rine_send never rejects — SDK errors become strings (R2)", async () => {
+	it("rine_send never rejects — SDK errors become strings", async () => {
 		const { client } = fakeClient({
 			send: async () => {
 				throw new Error("network down");
 			},
 		});
-		const out = await run(rineSendTool({ client }), { to: "bob@acme", body: "hi" });
+		const out = await run(rineSendTool({ client }), {
+			to: "bob@acme",
+			body: "hi",
+		});
 		expect(out).toBe("network down");
 	});
 
-	it("rejects invalid input with a field-named message (R3 parse)", async () => {
+	it("rejects invalid input with a field-named message", async () => {
 		const { client } = fakeClient();
 		const out = await run(rineSendTool({ client }), { body: "missing to" });
 		expect(out).toContain("Invalid input");
@@ -80,7 +88,9 @@ describe("rine tools (env identity via injected client)", () => {
 
 	it("rine_check_inbox marks decryptable messages delivered", async () => {
 		const { client, delivered } = fakeClient({
-			inbox: async () => ({ items: [makeMsg({ id: "a" }), makeMsg({ id: "b" })] }),
+			inbox: async () => ({
+				items: [makeMsg({ id: "a" }), makeMsg({ id: "b" })],
+			}),
 		});
 		const out = await run(rineCheckInboxTool({ client }), {});
 		expect(out).toMatch(/^1\. /m);
@@ -108,7 +118,9 @@ describe("rine tools (env identity via injected client)", () => {
 				human_oversight: true,
 			}),
 		});
-		const out = await run(rineInspectTool({ client }), { handleOrId: "bob@acme" });
+		const out = await run(rineInspectTool({ client }), {
+			handleOrId: "bob@acme",
+		});
 		expect(out).toContain("Bob (bob@acme)");
 		expect(out).toContain("human oversight: yes");
 	});
@@ -117,7 +129,11 @@ describe("rine tools (env identity via injected client)", () => {
 		const { client } = fakeClient({
 			thread: async () => [
 				entry({ direction: "sent", senderHandle: "me@acme", text: "ping" }),
-				entry({ direction: "received", senderHandle: "alice@acme", text: "pong" }),
+				entry({
+					direction: "received",
+					senderHandle: "alice@acme",
+					text: "pong",
+				}),
 			],
 		});
 		const out = await run(rineThreadTool({ client }), {
@@ -137,12 +153,14 @@ describe("rine tools (env identity via injected client)", () => {
 		expect(out).toContain("[unavailable]");
 	});
 
-	it("RINE_TOOLS has 14 tools incl. the payment tools (registry/factory in sync)", () => {
-		expect(RINE_TOOLS).toHaveLength(14);
+	it("RINE_TOOLS has 16 tools incl. join/invites (registry/factory in sync)", () => {
+		expect(RINE_TOOLS).toHaveLength(16);
 		const names = RINE_TOOLS.map((t) => t.name);
 		expect(names).toContain("rine_thread");
 		expect(names).toContain("rine_pay");
 		expect(names).toContain("rine_fulfill");
+		expect(names).toContain("rine_group_join");
+		expect(names).toContain("rine_group_invites");
 		// Every registry entry resolves to a live factory.
 		for (const t of RINE_TOOLS) expect(typeof t.factory).toBe("function");
 	});
@@ -164,8 +182,98 @@ describe("rine tools (env identity via injected client)", () => {
 				}),
 			},
 		});
-		const out = await run(rineGroupInspectTool({ client }), { group: "#ops@acme" });
+		const out = await run(rineGroupInspectTool({ client }), {
+			group: "#ops@acme",
+		});
 		expect(out).toContain("[OK] MLS");
 		expect(out).toContain("#ops@acme");
+	});
+
+	it("rine_group_join joins immediately when the group is already listed", async () => {
+		const { client } = fakeClient({
+			groups: {
+				join: async () => ({
+					status: "joined",
+					member: { group_id: "g1", agent_id: "a1", role: "member" },
+				}),
+			},
+		});
+		const out = await run(rineGroupJoinTool({ client }), {
+			group: "11111111-1111-1111-1111-111111111111",
+		});
+		expect(out).toContain("Joined");
+	});
+
+	it("rine_group_join resolves a handle against pending invites", async () => {
+		let seenGroupId: unknown;
+		const { client } = fakeClient({
+			groups: {
+				listInvites: async () => [
+					{
+						id: "req1",
+						group_id: "11111111-1111-1111-1111-111111111111",
+						agent_id: "a1",
+						status: "invited",
+						group_handle: "#ops@acme",
+						group_name: "Ops",
+					},
+				],
+				join: async (groupId: unknown) => {
+					seenGroupId = groupId;
+					return {
+						status: "pending",
+						request: {
+							id: "req1",
+							group_id: "11111111-1111-1111-1111-111111111111",
+							agent_id: "a1",
+							status: "invited",
+						},
+					};
+				},
+			},
+		});
+		const out = await run(rineGroupJoinTool({ client }), {
+			group: "#ops@acme",
+		});
+		expect(seenGroupId).toBe("11111111-1111-1111-1111-111111111111");
+		expect(out).toContain("pending approval");
+	});
+
+	it("rine_group_join reports no match when there's no pending invite for the handle", async () => {
+		const { client } = fakeClient({
+			groups: { listInvites: async () => [] },
+		});
+		const out = await run(rineGroupJoinTool({ client }), {
+			group: "#nope@acme",
+		});
+		expect(out).toContain("No pending invite");
+	});
+
+	it("rine_group_invites renders the caller's pending invites", async () => {
+		const { client } = fakeClient({
+			groups: {
+				listInvites: async () => [
+					{
+						id: "req1",
+						group_id: "11111111-1111-1111-1111-111111111111",
+						agent_id: "a1",
+						status: "invited",
+						group_handle: "#ops@acme",
+						invited_by: "bob-uuid",
+						message: "join us",
+					},
+				],
+			},
+		});
+		const out = await run(rineGroupInvitesTool({ client }), {});
+		expect(out).toContain("#ops@acme");
+		expect(out).toContain("invited by bob-uuid");
+		expect(out).toContain("join us");
+	});
+
+	it("rine_group_invites reports the empty state", async () => {
+		const { client } = fakeClient({ groups: { listInvites: async () => [] } });
+		const out = await run(rineGroupInvitesTool({ client }), {});
+		expect(out).toBe("No pending group invites.");
 	});
 });

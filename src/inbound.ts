@@ -2,14 +2,14 @@
  * Inbound webhook helpers for the rine channel: extracting the message id from a
  * rine standard-webhook body, and the continuation-token codec.
  *
- * The continuation token is how the channel makes outbound replies STATELESS (R7):
+ * The continuation token is how the channel makes outbound replies STATELESS:
  * it encodes the rine `conversation_id`, the reply target (the group handle for
  * group mail, else the sender handle), and — for 1:1 inbound only — the inbound
  * `message id` so the `message.completed` handler can reply IN-PLACE (via the reply
  * endpoint, preserving the inbound conversation) without any durable per-session map.
  * Because the token bakes in the per-message `m`, it differs on every 1:1 inbound
  * turn, so Eve does NOT resume a prior session from it — cross-turn continuity comes
- * from the general thread primitive (push-injected transcript, Slice E), not session
+ * from the general thread primitive (push-injected transcript), not session
  * resume. The message id is optional: group inbound and tokens minted by an older
  * build carry only `{c,r}` and decode with `messageId === undefined`, so the outbound
  * handler falls back to the `send()+parentConversationId` broadcast path.
@@ -45,7 +45,7 @@ export interface ReplyContext {
 	 */
 	readonly messageId?: string;
 	/**
-	 * Marks a session started by an inbound x402 payment frame (D1). The terminal
+	 * Marks a session started by an inbound x402 payment frame. The terminal
 	 * assistant message is NEVER prose-replied into a payment thread — that would
 	 * corrupt the handshake. The signed payment / receipt is transmitted in-thread
 	 * by the pay / fulfill tools instead, so `processCompletion` short-circuits when

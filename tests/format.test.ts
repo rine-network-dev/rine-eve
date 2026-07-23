@@ -9,7 +9,7 @@ import {
 } from "../src/format.js";
 import { makeMsg } from "./helpers.js";
 
-describe("renderers (R4: never leak ciphertext)", () => {
+describe("renderers (never leak ciphertext)", () => {
 	it("unwraps { text } and plain strings", () => {
 		expect(unwrapText({ text: "hi" })).toBe("hi");
 		expect(unwrapText("yo")).toBe("yo");

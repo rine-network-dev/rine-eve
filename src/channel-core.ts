@@ -4,9 +4,9 @@
  * `defineChannel` route; the OUTBOUND half (`processCompletion`/`processFailure`)
  * lives in `channel-outbound.ts`.
  *
- *   - INBOUND (`processInbound`): HMAC-verify (transport auth, R5) → parse → dedupe
+ *   - INBOUND (`processInbound`): HMAC-verify (transport auth) → parse → dedupe
  *     → `client.read(id)` to HPKE-decrypt + verify the sender's Ed25519 signature
- *     (content auth, R5) → loop-guard → mark delivered → start/resume the session.
+ *     (content auth) → loop-guard → mark delivered → start/resume the session.
  *
  * TRUST NOTE: `verified === true` cryptographically binds the message's *signer*
  * (the envelope `kid`), but the SDK exposes only the server-asserted
@@ -55,7 +55,7 @@ export interface InboundDeps {
 	/** Inbound types to ignore (loop guard). */
 	ignoreTypes: readonly string[];
 	/**
-	 * D2 opt-in auto-pay (default OFF). When true, an inbound `x402_payment_required`
+	 * Opt-in auto-pay (default OFF). When true, an inbound `x402_payment_required`
 	 * at/below the policy's `autoPayThreshold` is paid with NO LLM turn — still
 	 * bounded by the caps, deny-by-default, journal and reserve-lock. Any decline
 	 * falls back to surfacing the quote to the model.
@@ -65,17 +65,17 @@ export interface InboundDeps {
 	seen?: Set<string>;
 	/**
 	 * Approximate token budget for the role-tagged transcript push-injected into the
-	 * session context (REQ-CTX-01). When unset, only the sender line is injected.
+	 * session context. When unset, only the sender line is injected.
 	 */
 	threadContextTokenBudget?: number;
 }
 
-/** Cap on turns fetched for the push-injected transcript (REQ-SRV-04). */
+/** Cap on turns fetched for the push-injected transcript. */
 const THREAD_FETCH_LIMIT = 50;
 
 /**
  * The inbound pipeline. Returns the HTTP {@link Response} the route should send.
- * Status codes are retry-aware (R8/#10): `5xx` = transient (caller should retry),
+ * Status codes are retry-aware: `5xx` = transient (caller should retry),
  * `4xx` = terminal drop, `2xx` = accepted/benign-ignore.
  */
 export async function processInbound(deps: InboundDeps): Promise<Response> {
@@ -100,7 +100,7 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	if (!messageId) return new Response("ignored", { status: 202 });
 
 	// Idempotency: a replayed / retried / duplicated delivery for an id we already
-	// handled is acked without re-reading or re-replying (#4).
+	// handled is acked without re-reading or re-replying.
 	if (deps.seen?.has(messageId)) return new Response("duplicate", { status: 200 });
 
 	// Re-fetch by id: HPKE-decrypt + verify the sender signature client-side. We
@@ -116,13 +116,13 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	if (!msg.verified && !deps.acceptUnverified) {
 		return new Response("unverified sender signature", { status: 422 });
 	}
-	// Loop guard: never auto-reply to our own outbound types (R2) — only AFTER the
+	// Loop guard: never auto-reply to our own outbound types — only AFTER the
 	// signature check, so a forged type can't suppress a real message.
 	if (deps.ignoreTypes.includes(msg.type)) {
 		rememberSeen(deps.seen, messageId);
 		return new Response("ignored type", { status: 202 });
 	}
-	// x402 payment-aware re-surface (D1/D2): a payment frame becomes a structured
+	// x402 payment-aware re-surface: a payment frame becomes a structured
 	// agent turn (optionally auto-paid) — never a prose auto-reply into the thread.
 	if (isX402Frame(msg.type)) {
 		return handleX402Inbound(deps, msg, messageId);
@@ -130,7 +130,7 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	const replyTarget = msg.group_handle ?? msg.sender_handle;
 	if (!replyTarget) return new Response("no reply target", { status: 422 });
 
-	// Only 1:1 inbound threads the message id (→ in-place reply, REQ-FORK-01). A
+	// Only 1:1 inbound threads the message id (→ in-place reply). A
 	// GROUP reply must broadcast to every member via send(group_handle): the reply
 	// endpoint is a strict 1:1 reply (re-seals to the original sender only), so
 	// threading `m` for a group message would deliver a private reply no other
@@ -143,7 +143,7 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	// too (the in-memory `seen` only covers this instance).
 	await deps.client.markDelivered([msg.id]).catch(() => {});
 	rememberSeen(deps.seen, messageId);
-	// REQ-CTX-01: the Eve session is stateless per inbound, so push-inject the recent
+	// The Eve session is stateless per inbound, so push-inject the recent
 	// thread as role-tagged context for cross-turn memory. The sender/where line stays
 	// FIRST. Best-effort: a thread fetch failure must NOT block delivery — fall back to
 	// just the sender line. The current inbound was already read+persisted (:107), so it
