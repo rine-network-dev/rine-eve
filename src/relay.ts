@@ -12,7 +12,7 @@
 
 import { resolveApiUrl } from "@rine-network/core";
 import type { AsyncRineClient } from "@rine-network/sdk";
-import { getRineClient } from "./client.js";
+import { actingAgent, getRineClient } from "./client.js";
 import { signRineBody } from "./hmac.js";
 import type { DecryptedMessage } from "./types.js";
 
@@ -139,7 +139,7 @@ export async function runRelay(opts: RelayOptions = {}): Promise<void> {
 			: DEFAULT_INTERVAL_MS,
 	);
 	const client = getRineClient({
-		agent: opts.agent ?? process.env.RINE_AGENT,
+		agent: actingAgent(opts),
 		apiUrl: opts.apiUrl,
 		configDir: opts.configDir,
 	});

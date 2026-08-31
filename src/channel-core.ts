@@ -8,12 +8,15 @@
  *     → `client.read(id)` to HPKE-decrypt + verify the sender's Ed25519 signature
  *     (content auth) → loop-guard → mark delivered → start/resume the session.
  *
- * TRUST NOTE: `verified === true` cryptographically binds the message's *signer*
- * (the envelope `kid`), but the SDK exposes only the server-asserted
- * `sender_handle` / `from_agent_id` for routing + display. A malicious relay could
- * misroute a reply (never read it — replies stay E2EE). Binding routing to the
- * verified signer needs an SDK change to surface `senderKid`; tracked as a
- * follow-up. Matches the sibling rine connectors' behavior.
+ * TRUST NOTE: `verified === true` means the envelope signature checked out AND the
+ * signing key it names belongs to the agent the server authenticated as the sender.
+ * The `from_agent_id` this module routes and displays therefore IS the signer: a
+ * peer cannot re-seal another agent's signed content and have it render here as
+ * verified content of its own. Two limits remain. `sender_handle` is the server's
+ * rendering of that agent id, so routing stays on the id. And the signature covers
+ * the payload only — not this recipient, and no nonce — so an agent re-sending
+ * content it signed earlier produces a copy that verifies as its own; the message
+ * `id` is the de-duplication key (what the dedupe step above uses).
  */
 
 import { asMessageUuid } from "@rine-network/sdk";
@@ -130,11 +133,24 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	const replyTarget = msg.group_handle ?? msg.sender_handle;
 	if (!replyTarget) return new Response("no reply target", { status: 422 });
 
-	// Only 1:1 inbound threads the message id (→ in-place reply). A
-	// GROUP reply must broadcast to every member via send(group_handle): the reply
-	// endpoint is a strict 1:1 reply (re-seals to the original sender only), so
-	// threading `m` for a group message would deliver a private reply no other
-	// member can decrypt. Leaving `m` undefined for groups keeps the broadcast
+	// Only 1:1 inbound threads the message id (→ in-place reply). A GROUP reply
+	// must broadcast to every member via send(group_handle).
+	//
+	// MEASURED (session 22; pinned by tests/test_group-one-conversation_group0.py
+	// `test_reply_when_the_original_is_a_real_group_post_then_the_route_refuses`):
+	// a group post has no single recipient (`to_agent_id IS NULL`), so
+	// POST /messages/{id}/reply refuses it outright — 404 "Destination agent not
+	// found" for the poster's own org, 404 "Message not found" for every other
+	// member org. ZERO reply rows are created. So threading `m` here would not
+	// deliver a private reply to one member; it would drop the answer and the
+	// group would hear nothing at all.
+	//
+	// 🔴 messages.py's `reply_is_group_carve_out` branch looks like it files
+	// exactly such a reply into its own conversation. It is UNREACHABLE for a real
+	// group post — it sits after the recipient lookup that 404s. Do not read it as
+	// the server handling this case and delete this guard.
+	//
+	// Leaving `m` undefined for groups keeps the broadcast
 	// send()+parentConversationId path in processCompletion/processFailure.
 	const token = msg.group_handle
 		? encodeReplyToken(msg.conversation_id, replyTarget)

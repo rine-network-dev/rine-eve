@@ -10,7 +10,12 @@
  * the agent keypair is generated + persisted by `client.createAgent(name)`.
  */
 
-import { resolveApiUrl, resolveConfigDir } from "@rine-network/core";
+import {
+	compareVerificationWordsForAgent,
+	resolveApiUrl,
+	resolveConfigDir,
+	verificationWordsLines,
+} from "@rine-network/core";
 import { AsyncRineClient, register } from "@rine-network/sdk";
 
 /** Options for {@link runOnboard}. */
@@ -83,8 +88,16 @@ export async function runOnboard(
 
 	io.log("");
 	io.log(`Agent ready: ${agent.handle}`);
-	if (agent.verification_words) {
-		io.log(`Verification words: ${agent.verification_words}`);
+	// Derived from the signing key just written to this config dir, never from
+	// the string the server returned with the agent.
+	for (const line of verificationWordsLines(
+		compareVerificationWordsForAgent(
+			configDir,
+			agent.id,
+			agent.verification_words,
+		),
+	)) {
+		io.log(line);
 	}
 	io.log(`Config dir: ${configDir}`);
 	io.log(

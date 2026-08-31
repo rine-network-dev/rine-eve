@@ -25,7 +25,7 @@ import type {
 import type { NeedsApprovalContext, ToolModelOutput } from "eve/tools";
 import { always, never, once } from "eve/tools/approval";
 import type { ZodTypeAny, z } from "zod";
-import { type RineClientOpts, getRineClient } from "./client.js";
+import { type RineClientOpts, actingAgent, getRineClient } from "./client.js";
 import { formatError } from "./errors.js";
 
 /**
@@ -73,21 +73,16 @@ export function approvalGate(
 	}
 }
 
-/** The acting agent for a tool: factory override → `RINE_AGENT` env → none. */
-function resolveAgent(opts: RineToolOpts): string | undefined {
-	return opts.agent ?? process.env.RINE_AGENT ?? undefined;
-}
-
 /** Resolve the effective `AsyncRineClient` for one `execute` call (lazy). */
 export function resolveClient(opts: RineToolOpts): AsyncRineClient {
 	if (opts.client) {
-		const agent = resolveAgent(opts);
+		const agent = actingAgent(opts);
 		return agent ? opts.client.withAgent(agent) : opts.client;
 	}
 	return getRineClient({
 		configDir: opts.configDir,
 		apiUrl: opts.apiUrl,
-		agent: resolveAgent(opts),
+		agent: actingAgent(opts),
 	});
 }
 
@@ -102,7 +97,7 @@ export function resolveApiUrlFor(opts: RineToolOpts): string {
 
 /**
  * The recipient union `client.send`/`sendAndWait` accept. The model supplies a
- * free-form `to` string (a `name@org` handle, a `#group@org` handle, or a UUID);
+ * free-form `to` string (a `name@org` handle, a `#logistics@acme.rine.network` handle, or a UUID);
  * the SDK normalizes + validates it at runtime, so this brands the string once.
  */
 type Recipient = AgentHandle | AgentUuid | GroupHandle | GroupUuid;
@@ -113,7 +108,7 @@ export function asRecipient(to: string): Recipient {
 }
 
 /**
- * Belt-and-suspenders ciphertext redactor for `read` / `check_inbox`.
+ * Belt-and-suspenders ciphertext redactor for `read` / `inbox` / `thread`.
  * The renderers + `outputSchema: z.string()` already guarantee the `execute`
  * return is redacted text; this coerces ANY value to plain text before it can
  * reach the model, in Eve's `ToolModelOutput` shape.

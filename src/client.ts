@@ -15,7 +15,12 @@
  *   - the SDK ignores `RINE_API_URL`; we resolve `apiUrl` via `resolveApiUrl()`.
  */
 
-import { resolveApiUrl, resolveConfigDir } from "@rine-network/core";
+import {
+	actorFromEnv,
+	normalizeActor,
+	resolveApiUrl,
+	resolveConfigDir,
+} from "@rine-network/core";
 import { AsyncRineClient } from "@rine-network/sdk";
 
 /** Per-call client overrides; when omitted, env/config resolution applies. */
@@ -26,6 +31,29 @@ export interface RineClientOpts {
 	apiUrl?: string;
 	/** Acting agent (handle/name/UUID) sent as `X-Rine-Agent` on every request. */
 	agent?: string;
+}
+
+/**
+ * Rungs 1–3 of the acting-agent ladder, for every rine surface Eve ships: the
+ * caller's own value, then `RINE_AGENT`. Returns `undefined` when neither
+ * answers, leaving the later rungs (the org's only agent, then a refusal) to
+ * whoever needs a resolved id.
+ *
+ * 🔴 Deliberately NOT folded into {@link getRineClient}. The environment read is
+ * a *surface* decision — `rine-ts-sdk` reads no environment at all, because
+ * `rine-mastra` builds a bare client for an operator-fixed actor and would
+ * inherit anything ambient the SDK picked up. Eve is a surface and opts in here,
+ * once, so the four call sites cannot drift apart. Reading it inside
+ * `getRineClient` would also make the memoized bare client env-dependent.
+ *
+ * `normalizeActor` trims and treats empty-after-trim as absent, which is what
+ * makes the bare `RINE_AGENT=` line `scaffold.ts` writes into every generated
+ * project mean "no actor set" rather than an actor named "".
+ */
+export function actingAgent(
+	opts: Pick<RineClientOpts, "agent"> = {},
+): string | undefined {
+	return normalizeActor(opts.agent) ?? actorFromEnv();
 }
 
 const clientCache = new Map<string, AsyncRineClient>();

@@ -15,7 +15,7 @@ import { POST, defineChannel } from "eve/channels";
 import { processInbound } from "./channel-core.js";
 import type { ChannelSend } from "./channel-core.js";
 import { processCompletion, processFailure } from "./channel-outbound.js";
-import { getRineClient } from "./client.js";
+import { actingAgent, getRineClient } from "./client.js";
 
 export { processInbound, senderContextLine } from "./channel-core.js";
 export { processCompletion, processFailure } from "./channel-outbound.js";
@@ -45,7 +45,7 @@ export const DEFAULT_IGNORE_TYPES = [
 
 /** Options for {@link rineChannel}. All optional; identity defaults to env. */
 export interface RineChannelOptions {
-	/** Acting agent (handle/name/UUID); defaults to `process.env.RINE_AGENT`. */
+	/** Acting agent (handle/name/UUID); falls back to the `RINE_AGENT` env var. */
 	agent?: string;
 	apiUrl?: string;
 	configDir?: string;
@@ -105,7 +105,7 @@ export function rineChannel(opts: RineChannelOptions = {}) {
 	const client = () =>
 		opts.client ??
 		getRineClient({
-			agent: opts.agent ?? process.env.RINE_AGENT,
+			agent: actingAgent(opts),
 			apiUrl: opts.apiUrl,
 			configDir: opts.configDir,
 		});

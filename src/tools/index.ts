@@ -1,5 +1,5 @@
 /**
- * The 16 rine tool factories, re-exported for `@rine-network/eve/tools`.
+ * The 25 rine tool factories, re-exported for `@rine-network/eve/tools`.
  *
  * Eve discovers tools by file: each lives as a default-export in
  * `agent/tools/<name>.ts`, and the filename slug IS the tool name. The `init`
@@ -9,7 +9,23 @@
  */
 
 import type { RineToolOpts } from "../tool.js";
-import { rineDiscoverTool, rineInspectTool } from "./discovery.js";
+import {
+	rineDiscoverTool,
+	rineInspectTool,
+	rineWhoamiTool,
+} from "./discovery.js";
+import {
+	rineGroupLeaveTool,
+	rineGroupReclaimTool,
+	rineGroupRequestsTool,
+	rineGroupSyncTool,
+	rineGroupVoteTool,
+} from "./groups-admin.js";
+import {
+	rineDiscoverGroupsTool,
+	rineGroupRosterTool,
+	rineGroupsTool,
+} from "./groups-list.js";
 import {
 	rineGroupCreateTool,
 	rineGroupInspectTool,
@@ -19,7 +35,7 @@ import {
 	rineGroupRemoveTool,
 } from "./groups.js";
 import {
-	rineCheckInboxTool,
+	rineInboxTool,
 	rineReadTool,
 	rineReplyTool,
 	rineSendAndWaitTool,
@@ -30,14 +46,30 @@ import { rineFulfillTool, rinePayTool } from "./payments.js";
 import { RINE_TOOL_META, type RineToolMeta } from "./registry.js";
 
 export {
-	rineCheckInboxTool,
+	rineInboxTool,
 	rineReadTool,
 	rineReplyTool,
 	rineSendAndWaitTool,
 	rineSendTool,
 	rineThreadTool,
 } from "./messaging.js";
-export { rineDiscoverTool, rineInspectTool } from "./discovery.js";
+export {
+	rineDiscoverTool,
+	rineInspectTool,
+	rineWhoamiTool,
+} from "./discovery.js";
+export {
+	rineGroupLeaveTool,
+	rineGroupReclaimTool,
+	rineGroupRequestsTool,
+	rineGroupSyncTool,
+	rineGroupVoteTool,
+} from "./groups-admin.js";
+export {
+	rineDiscoverGroupsTool,
+	rineGroupRosterTool,
+	rineGroupsTool,
+} from "./groups-list.js";
 export {
 	rineGroupCreateTool,
 	rineGroupInspectTool,
@@ -65,18 +97,27 @@ export interface RineToolSpec extends RineToolMeta {
 const FACTORIES: Record<string, RineToolFactory> = {
 	rineSendTool,
 	rineSendAndWaitTool,
-	rineCheckInboxTool,
+	rineInboxTool,
 	rineReadTool,
 	rineReplyTool,
 	rineThreadTool,
 	rineDiscoverTool,
 	rineInspectTool,
+	rineDiscoverGroupsTool,
+	rineWhoamiTool,
+	rineGroupsTool,
 	rineGroupCreateTool,
 	rineGroupInviteTool,
 	rineGroupRemoveTool,
 	rineGroupInspectTool,
+	rineGroupRosterTool,
 	rineGroupJoinTool,
 	rineGroupInvitesTool,
+	rineGroupRequestsTool,
+	rineGroupVoteTool,
+	rineGroupLeaveTool,
+	rineGroupSyncTool,
+	rineGroupReclaimTool,
 	rinePayTool,
 	rineFulfillTool,
 };

@@ -1,5 +1,5 @@
 /**
- * Shared Zod input schemas for the 12 rine tools.
+ * Shared Zod input schemas for the 25 rine tools.
  *
  * Rich `.describe()` on EVERY field: the field descriptions are the #1 lever on
  * tool-call accuracy (the AI-DX). Identity/credentials NEVER appear here — the
@@ -7,10 +7,28 @@
  * input schema.
  */
 
+import {
+	THREAD_REF_SURFACES,
+	threadRefRequiredRefusal,
+} from "@rine-network/core";
 import { z } from "zod";
 
 const DEFAULT_MESSAGE_TYPE = "rine.v1.task_request";
 const DEFAULT_REPLY_TYPE = "rine.v1.task_response";
+
+/**
+ * The exactly-one-of rule for `rine_thread`'s two references, in the words the
+ * refusal will use if it is broken.
+ *
+ * One string teaches the schema and answers the mistake, so the model can never
+ * be told a rule the product does not enforce. Its spellings come from
+ * `rine-core` — these tools name the two references exactly as the TypeScript
+ * SDK does (`group` / `conversationId`), which is what `THREAD_REF_SURFACES.sdk`
+ * holds.
+ */
+export const THREAD_REF_RULE = threadRefRequiredRefusal(
+	THREAD_REF_SURFACES.sdk,
+);
 
 // ---------------------------------------------------------------------------
 // Messaging
@@ -20,7 +38,7 @@ export const sendInput = z.object({
 	to: z
 		.string()
 		.describe(
-			"Recipient address: a 1:1 agent handle `name@org`, a UUID, or a group handle prefixed with `#` (e.g. `#ops@acme`). A `#` target sends to the whole group over its E2EE channel (MLS or sender-key, chosen automatically).",
+			"Recipient handle/UUID, or a group. Examples: `kofi@acme.rine.network` for one agent; `#logistics@acme.rine.network`, or just `logistics`, for a group. A group target sends to the whole group over its E2EE channel (MLS or sender-key, chosen automatically). A bare name that is one of your own agents' is refused rather than posted, and the refusal prints the handle that would have sent the 1:1.",
 		),
 	body: z
 		.string()
@@ -45,7 +63,7 @@ export const sendAndWaitInput = z.object({
 	to: z
 		.string()
 		.describe(
-			"Recipient agent address (1:1 ONLY): a handle `name@org` or a UUID. Group handles (`#…`) are NOT supported here — use rine_send for groups.",
+			"Recipient agent address (1:1 ONLY): a handle `kofi@acme.rine.network` or a UUID. Group handles (`#…`) are NOT supported here — use rine_send for groups.",
 		),
 	body: z
 		.string()
@@ -67,7 +85,16 @@ export const sendAndWaitInput = z.object({
 		.describe(`The rine message type (default \`${DEFAULT_MESSAGE_TYPE}\`).`),
 });
 
-export const checkInboxInput = z.object({
+export const inboxInput = z.object({
+	// `all` is a TOOL-layer value with no counterpart on the wire: the server's
+	// filter is a three-value literal, and "everything" is the absence of the
+	// parameter. The tool body translates it; it is never sent.
+	status: z
+		.enum(["new", "delivered", "read", "all"])
+		.default("new")
+		.describe(
+			"Which messages to fetch (default `new`). `new` is the mail this agent has not acknowledged yet, and it is the ONLY value that marks what it returns delivered. `delivered` and `read` re-read mail already acknowledged, and `all` drops the filter entirely; none of the three marks anything.",
+		),
 	limit: z
 		.number()
 		.int()
@@ -75,7 +102,7 @@ export const checkInboxInput = z.object({
 		.max(100)
 		.default(20)
 		.describe(
-			"Maximum number of new messages to fetch and decrypt (1–100, default 20). Fetched messages are marked delivered so a later check returns only newer mail.",
+			"Maximum number of messages to fetch and decrypt (1–100, default 20). On the default `new` status the fetched messages are marked delivered, so a later check returns only newer mail.",
 		),
 });
 
@@ -107,10 +134,17 @@ export const replyInput = z.object({
 });
 
 export const threadInput = z.object({
+	group: z
+		.string()
+		.optional()
+		.describe(
+			`The group whose transcript to read: its handle (#logistics@acme.rine.network), its name, or its UUID. Returns every turn since this agent was seated, decrypted and role-tagged, oldest→newest. ${THREAD_REF_RULE}`,
+		),
 	conversationId: z
 		.string()
+		.optional()
 		.describe(
-			"The UUID of the conversation to fetch the transcript of. Returns every turn (yours and the peer's) decrypted and role-tagged, oldest→newest.",
+			`The UUID of the conversation to fetch the transcript of. Returns every turn (yours and the peer's) decrypted and role-tagged, oldest→newest. ${THREAD_REF_RULE}`,
 		),
 	limit: z
 		.number()
@@ -161,16 +195,31 @@ export const inspectInput = z.object({
 	handleOrId: z
 		.string()
 		.describe(
-			"An agent handle (`name@org`, resolved via WebFinger) or a UUID. Returns the full public profile.",
+			"An agent handle (`kofi@acme.rine.network`, resolved via WebFinger) or a UUID. Returns the full public profile.",
 		),
 });
 
+/** No input: reports this agent's OWN org, trust tier, and live handles. */
+export const whoamiInput = z.object({});
+
+// The three group READ schemas live in `schemas-groups-list.ts`; re-exported
+// here so this file stays the single schema entry point.
+export {
+	discoverGroupsInput,
+	groupRosterInput,
+	groupsInput,
+} from "./schemas-groups-list.js";
 export {
 	groupCreateInput,
 	groupInspectInput,
 	groupInviteInput,
 	groupInvitesInput,
 	groupJoinInput,
+	groupLeaveInput,
+	groupReclaimInput,
 	groupRemoveInput,
+	groupRequestsInput,
+	groupSyncInput,
+	groupVoteInput,
 } from "./schemas-groups.js";
 export { fulfillInput, payInput } from "./schemas-payments.js";

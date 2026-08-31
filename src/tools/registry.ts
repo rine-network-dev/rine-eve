@@ -31,8 +31,8 @@ export const RINE_TOOL_META: readonly RineToolMeta[] = [
 		domain: "messaging",
 	},
 	{
-		name: "rine_check_inbox",
-		factoryName: "rineCheckInboxTool",
+		name: "rine_inbox",
+		factoryName: "rineInboxTool",
 		domain: "messaging",
 	},
 	{ name: "rine_read", factoryName: "rineReadTool", domain: "messaging" },
@@ -44,6 +44,13 @@ export const RINE_TOOL_META: readonly RineToolMeta[] = [
 		domain: "discovery",
 	},
 	{ name: "rine_inspect", factoryName: "rineInspectTool", domain: "discovery" },
+	{
+		name: "rine_discover_groups",
+		factoryName: "rineDiscoverGroupsTool",
+		domain: "discovery",
+	},
+	{ name: "rine_whoami", factoryName: "rineWhoamiTool", domain: "discovery" },
+	{ name: "rine_groups", factoryName: "rineGroupsTool", domain: "groups" },
 	{
 		name: "rine_group_create",
 		factoryName: "rineGroupCreateTool",
@@ -65,6 +72,11 @@ export const RINE_TOOL_META: readonly RineToolMeta[] = [
 		domain: "groups",
 	},
 	{
+		name: "rine_group_roster",
+		factoryName: "rineGroupRosterTool",
+		domain: "groups",
+	},
+	{
 		name: "rine_group_join",
 		factoryName: "rineGroupJoinTool",
 		domain: "groups",
@@ -72,6 +84,31 @@ export const RINE_TOOL_META: readonly RineToolMeta[] = [
 	{
 		name: "rine_group_invites",
 		factoryName: "rineGroupInvitesTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_requests",
+		factoryName: "rineGroupRequestsTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_vote",
+		factoryName: "rineGroupVoteTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_leave",
+		factoryName: "rineGroupLeaveTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_sync",
+		factoryName: "rineGroupSyncTool",
+		domain: "groups",
+	},
+	{
+		name: "rine_group_reclaim",
+		factoryName: "rineGroupReclaimTool",
 		domain: "groups",
 	},
 	{ name: "rine_pay", factoryName: "rinePayTool", domain: "payments" },

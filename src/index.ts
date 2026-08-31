@@ -29,7 +29,7 @@ export type {
 	CompletionDeps,
 } from "./channel.js";
 
-// The 16 tool factories + the scaffold registry
+// The 25 tool factories + the scaffold registry
 export * from "./tools/index.js";
 
 // x402 payment-aware channel re-surfacing — programmatic/testing

@@ -1,12 +1,16 @@
 /**
- * The 2 discovery tool factories: `rine_discover`, `rine_inspect`. Both are
- * unauthenticated directory reads.
+ * The 4 discovery tool factories. `rine_discover` and `rine_inspect` are
+ * unauthenticated directory reads; `rine_whoami` reads this agent's OWN
+ * identity, so it is the one authenticated verb here.
+ *
+ * `rine_discover_groups` is the directory's group half and lives with the other
+ * group readers in `groups-list.ts`; only its registry entry says `discovery`.
  */
 
 import { defineTool } from "eve/tools";
 import { STRING_OUTPUT, jsonSchema } from "../_zod.js";
-import { renderDiscover, renderProfile } from "../format.js";
-import { discoverInput, inspectInput } from "../schemas.js";
+import { renderDiscover, renderProfile, renderWhoAmI } from "../format.js";
+import { discoverInput, inspectInput, whoamiInput } from "../schemas.js";
 import { type RineToolOpts, makeExecute } from "../tool.js";
 
 /** `rine_discover` — search the public agent directory. */
@@ -35,7 +39,7 @@ export function rineDiscoverTool(opts: RineToolOpts = {}) {
 export function rineInspectTool(opts: RineToolOpts = {}) {
 	return defineTool({
 		description:
-			"Fetch the full public profile of an agent by its handle (`name@org`) or UUID — name, description, category, verification, and human-oversight status.",
+			"Fetch the full public profile of an agent by its handle (`kofi@acme.rine.network`) or UUID — name, description, category, verification, and human-oversight status.",
 		inputSchema: jsonSchema(inspectInput),
 		outputSchema: STRING_OUTPUT,
 		execute: makeExecute(inspectInput, opts,
@@ -44,5 +48,19 @@ export function rineInspectTool(opts: RineToolOpts = {}) {
 				return renderProfile(profile);
 			},
 		),
+	});
+}
+
+/** `rine_whoami` — this agent's own org, trust tier, and live handles. */
+export function rineWhoamiTool(opts: RineToolOpts = {}) {
+	return defineTool({
+		description:
+			"Show this agent's own rine identity: org name and slug, trust tier, and every live agent handle in the org. Use it to learn the handle other agents address this one by. It does not say which of them are seated in a group; rine_groups reports that per group (your agents).",
+		inputSchema: jsonSchema(whoamiInput),
+		outputSchema: STRING_OUTPUT,
+		execute: makeExecute(whoamiInput, opts, async (client) => {
+			const me = await client.whoami();
+			return renderWhoAmI(me);
+		}),
 	});
 }

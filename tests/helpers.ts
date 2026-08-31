@@ -1,3 +1,4 @@
+import { unknownGroupRefusal } from "@rine-network/core";
 import type { AsyncRineClient } from "@rine-network/sdk";
 import type { DecryptedMessage } from "../src/types.js";
 
@@ -45,6 +46,46 @@ export interface PaymentCalls {
 	walletChecks: number;
 }
 
+/**
+ * The `groups.resolveRef` a verb-behaviour test gets when it names none.
+ *
+ * 🔴 It is a FIXTURE SERVER, not a passthrough. It never answers with the
+ * reference it was handed — it matches the reference against the rows the test
+ * itself put in `groups.list()`, answers with the whole `ResolvedGroup` record
+ * (id, handle, the caller's own spelling, and the row), and refuses anything
+ * else with `rine-core`'s own `unknownGroupRefusal` rather than a sentence
+ * retyped here. A stub shaped `resolveRef: async (ref) => ref` would make every
+ * one of these tests pass without a resolution having happened, and would hide
+ * a call site that hands a verb `.id` where the contract wants the record.
+ *
+ * The resolution LADDER is not what these tests are for and is not proven here:
+ * that runs against real HTTP in `groups-fetch.test.ts`, which is also where
+ * the fold — one group read, not two — is measured. Here the resolve is a
+ * fixture so that the verb's own behaviour is the only thing under test.
+ *
+ * 🔴 It is STRICTER than the shipped ladder, and a refusal from it is therefore
+ * not a product fact. Two rungs are deliberately not modelled: a BARE local
+ * name (`ops`), which production resolves against the org's list, and handle
+ * normalisation (`ops` → `#ops@acme`). A test that names a group any way other
+ * than by its exact id or exact handle will be refused HERE and accepted by the
+ * product — write it in `groups-fetch.test.ts` instead of recording the refusal.
+ */
+function fixtureResolveRef(list: () => Promise<{ items: GroupRowFixture[] }>) {
+	return async (ref: string) => {
+		const { items } = await list();
+		const row = items.find((g) => g.id === ref || g.handle === ref);
+		if (!row) throw new Error(unknownGroupRefusal(items as never, ref));
+		return { id: row.id, handle: row.handle, spelling: ref, row };
+	};
+}
+
+/** The fields the fixture resolver reads off a test's own group rows. */
+interface GroupRowFixture {
+	id: string;
+	handle: string;
+	[k: string]: unknown;
+}
+
 /** Build a fake AsyncRineClient capturing calls; override any method. */
 export function fakeClient(over: Partial<Record<string, unknown>> = {}): {
 	client: AsyncRineClient;
@@ -57,7 +98,7 @@ export function fakeClient(over: Partial<Record<string, unknown>> = {}): {
 	const replies: ReplyCall[] = [];
 	const delivered: string[][] = [];
 	const payments: PaymentCalls = { pays: [], fulfills: [], walletChecks: 0 };
-	const { payments: paymentsOver, ...restOver } = over;
+	const { payments: paymentsOver, groups: groupsOver, ...restOver } = over;
 	const basePayments: Record<string, unknown> = {
 		walletAddress: async () => {
 			payments.walletChecks++;
@@ -94,7 +135,34 @@ export function fakeClient(over: Partial<Record<string, unknown>> = {}): {
 		},
 		...((paymentsOver as Record<string, unknown> | undefined) ?? {}),
 	};
+	// 🔴 Merged, never replaced. A suite that overrides `groups` names the two
+	// or three verbs it is testing; if that object replaced the base wholesale it
+	// would also silently drop `resolveRef`, which every group tool now calls
+	// first, and the suite would fail on the resolve rather than on its subject.
+	const groupsFake: Record<string, unknown> = {
+		// One default row, so a suite testing a verb rather than a resolution
+		// does not have to restate the org's groups to get past the resolve.
+		list: async () => ({
+			items: [
+				{
+					id: "11111111-1111-1111-1111-111111111111",
+					handle: "#ops@acme",
+					enrollment_policy: "closed",
+					visibility: "private",
+					mls_enabled: true,
+					mls_group_id: "mls-1",
+				},
+			] as GroupRowFixture[],
+		}),
+		...((groupsOver as Record<string, unknown> | undefined) ?? {}),
+	};
+	if (!("resolveRef" in groupsFake)) {
+		groupsFake.resolveRef = fixtureResolveRef(
+			groupsFake.list as () => Promise<{ items: GroupRowFixture[] }>,
+		);
+	}
 	const base: Record<string, unknown> = {
+		groups: groupsFake,
 		send: async (to: unknown, payload: unknown, opts: unknown) => {
 			sends.push({ to, payload, opts });
 			return { id: "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr", conversation_id: "c" };
@@ -107,6 +175,12 @@ export function fakeClient(over: Partial<Record<string, unknown>> = {}): {
 			delivered.push(ids);
 		},
 		thread: async () => [],
+		// Every group renderer asks the client for this org's id→handle
+		// map. The default answers an empty one — case 2 for every id, which is
+		// what a real client answers when `GET /agents` fails — so a test that
+		// does not care about handles reads UUIDs rather than a TypeError. A
+		// test that does care overrides it.
+		agentHandles: async () => new Map<string, string>(),
 		withAgent() {
 			return this;
 		},
