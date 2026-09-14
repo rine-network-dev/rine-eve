@@ -27,7 +27,11 @@ import type {
 } from "@rine-network/sdk";
 import type { InboundDeps } from "./channel-core.js";
 import { senderLabel, verifiedNote } from "./format.js";
-import { encodeReplyToken, rememberSeen } from "./inbound.js";
+// `ackDelivery` comes from the leaf, not from `channel-core.js`: that module
+// imports THIS one, so an ack imported back from it is a runtime import cycle.
+// The remaining edge to `channel-core.js` is `import type`, erased at compile
+// time (its docstring says so too).
+import { ackDelivery, encodeReplyToken, rememberSeen } from "./inbound.js";
 import type { DecryptedMessage } from "./types.js";
 
 /** The three x402 frame types this module re-surfaces. */
@@ -131,7 +135,10 @@ async function surfaceX402(
 	note: string | null,
 ): Promise<Response> {
 	const replyTarget = msg.group_handle ?? msg.sender_handle ?? senderLabel(msg);
-	await deps.client.markDelivered([msg.id]).catch(() => {});
+	// The inbound read peeks, so this ack is what actually consumes the frame: a
+	// swallowed failure would re-surface the same quote to the model on a later
+	// webhook attempt. Still best-effort, no longer silent — `ackDelivery` warns.
+	await ackDelivery(deps, msg.id);
 	rememberSeen(deps.seen, messageId);
 	const context = [x402GuidanceLine(msg)];
 	if (note) context.push(note);
@@ -161,7 +168,10 @@ export async function handleX402Inbound(
 	if (msg.type === X402_MESSAGE_TYPE.PAYMENT_REQUIRED && deps.autoPay) {
 		const decline = await tryAutoPay(deps, msg);
 		if (decline === null) {
-			await deps.client.markDelivered([msg.id]).catch(() => {});
+			// Paid with no LLM turn, so this is the only ack the frame will ever get and
+			// the peeked read left the row `new`: a lost ack means a later attempt
+			// re-surfaces a quote that has already been settled. `ackDelivery` warns.
+			await ackDelivery(deps, msg.id);
 			rememberSeen(deps.seen, messageId);
 			return new Response("auto-paid", { status: 200 });
 		}

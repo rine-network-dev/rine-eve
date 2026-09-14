@@ -4,7 +4,83 @@ All notable changes to `@rine-network/eve` are documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.6.0] - 2026-09-14
+
+### Fixed — a sender whose signing key could not be looked up is no longer discarded
+
+The channel refuses an inbound message whose signature does not check out, and it
+consumed the message when it did so. That is right for a signature that is wrong:
+a forged signature and a signature attributed to the wrong agent are properties
+of the bytes, and no later attempt can reach a different verdict.
+
+It was also being applied to a third case that is not a refusal at all. When the
+sender's signing key cannot be *fetched* at that moment, there is no verdict —
+only the absence of one — and it resolves itself as soon as the key is reachable.
+A genuine message was being thrown away for a passing lookup failure, and nothing
+said so.
+
+That case now leaves the message alone: the row stays `new`, so a later attempt
+re-reads a real message instead of an already-consumed one. A signature that is
+actually wrong is still consumed, for the reason above.
+
+**What you will see differently:** an inbound message can now be attempted more
+than once when the sender's key is briefly unreachable, where before it was
+dropped silently on the first try. The response is still `422` in both cases;
+what changed is whether the message survives it.
+
+This release is a minor rather than a patch because that is a behaviour change,
+and a patch would reach every `^0.5.x` install with no action taken.
+
+### Fixed — an inbound message the channel cannot decrypt is no longer lost
+
+The channel re-reads every inbound message by id before it starts a turn. That
+read used to mark the message delivered as a side effect, and it did so *before*
+the channel had decided anything — so the two refusals that follow it threw away
+the message they refused. An undecryptable envelope (usually a group sender key
+that simply has not arrived yet) was gone after exactly one look, and the `503`
+that promised the caller a retry was retrying against a message already
+consumed.
+
+The read now peeks: it suppresses the delivery mark and changes nothing else. A
+message this channel could not open stays in `status=new`, so the rine webhook
+worker's own bounded, backing-off retry gets further attempts at it, and a
+message that becomes readable in that window is delivered. The undecryptable
+refusal is still `422` — the documented status contract is unchanged, `4xx`
+terminal and `5xx` transient — and a refused message is still visible to
+`rine_inbox` and readable by `rine_read` the whole time.
+
+What is different for an operator: a message that used to disappear after the
+first delivery attempt can now be delivered on a later one, and an unreadable
+one may be attempted more than once before the webhook job gives up. Nothing
+that was delivered before stops being delivered. Every other refusal — a
+signature that does not verify, an ignored reply type, a message with no reply
+target — consumes the message exactly as it did before.
+
+Marking a message delivered is now the channel's own explicit step rather than a
+side effect of reading it. It stays best-effort, so a failed mark never costs a
+delivery, but it is no longer silent: the failure is warned, because the message
+will otherwise be delivered and answered a second time.
+
+Requires a server that honours the peek request (`X-Rine-Peek`). An older
+deployment ignores it and behaves exactly as before this release.
+
+## [0.5.0] - 2026-08-31
+
+### Changed — `rine_check_inbox` is now `rine_inbox`, with no alias
+
+**Breaking change**, shipped in this release. The tool is called `rine_inbox` on
+every rine surface. An agent configuration that names `rine_check_inbox` no
+longer resolves it, and there is no deprecation shim. The exported factory
+renames with it: `rineCheckInboxTool` → `rineInboxTool`.
+
+The release before this one was 0.3.0, so a configuration carrying the old name
+kept working until this upgrade, and nothing here announced the rename at the
+time. Rename the tool where your agent lists it, and the factory import if you
+construct tools yourself.
+
+It also gained a `status` filter — `new` (the default), `delivered`, `read` or
+`all`. Only `new` marks what it returns delivered; the other three re-read mail
+that was already acknowledged and mark nothing.
 
 ### Changed — `rine_group_join` resolves the handle it advertises
 
@@ -31,17 +107,6 @@ differently depending on which framework ran it. Every leading `#` is read as
 the sigil now. The match stays bounded to groups that have already invited this
 agent, and `#ops@acme.rine.network` and `##ops@acme.rine.network` remain
 different handles.
-
-### Changed — `rine_check_inbox` is now `rine_inbox`, with no alias
-
-The tool is called `rine_inbox` on every rine surface. An agent configuration
-that names `rine_check_inbox` no longer resolves it, and there is no
-deprecation shim. The exported factory renames with it:
-`rineCheckInboxTool` → `rineInboxTool`.
-
-It also gained a `status` filter — `new` (the default), `delivered`, `read` or
-`all`. Only `new` marks what it returns delivered; the other three re-read mail
-that was already acknowledged and mark nothing.
 
 ### Added — four tools: `rine_groups`, `rine_discover_groups`, `rine_whoami`, `rine_group_roster`
 

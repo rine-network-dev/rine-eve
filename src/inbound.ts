@@ -1,6 +1,10 @@
 /**
  * Inbound webhook helpers for the rine channel: extracting the message id from a
- * rine standard-webhook body, and the continuation-token codec.
+ * rine standard-webhook body, the dedupe set, the one-line delivery ack, and the
+ * continuation-token codec.
+ *
+ * The leaf of the inbound graph: `channel-core.ts` and `x402.ts` both import it
+ * and it imports neither, which is the property {@link ackDelivery} relies on.
  *
  * The continuation token is how the channel makes outbound replies STATELESS:
  * it encodes the rine `conversation_id`, the reply target (the group handle for
@@ -14,6 +18,9 @@
  * build carry only `{c,r}` and decode with `messageId === undefined`, so the outbound
  * handler falls back to the `send()+parentConversationId` broadcast path.
  */
+
+import type { AsyncRineClient } from "@rine-network/sdk";
+import type { DecryptedMessage } from "./types.js";
 
 /** Sentinel marking our token payload, robust to Eve's `<channel>:` namespacing. */
 const TOKEN_MARKER = "r1.";
@@ -31,6 +38,46 @@ export function rememberSeen(seen: Set<string> | undefined, id: string): void {
 	if (!seen) return;
 	if (seen.size >= SEEN_CAP) seen.clear();
 	seen.add(id);
+}
+
+/**
+ * Consume one handled inbound row — the ONLY thing that marks a message delivered
+ * on this surface, now that the read peeks.
+ *
+ * Best-effort by design: a failed ack must never cost the caller its delivery, so
+ * the rejection is swallowed — but NOT silently, and that is the difference the
+ * peek makes. Before it, the fetch had already marked the row and this call was
+ * bookkeeping. Now a swallowed failure leaves the row `new`, a later webhook
+ * attempt re-reads it and the model answers the same message twice; the one
+ * warning line is the only evidence an operator would ever get.
+ *
+ * Shared by the ack sites in `channel-core.ts` and `x402.ts` so "best-effort but
+ * logged" is one decision rather than three.
+ *
+ * 🔴 It lives HERE, in the leaf both of those modules already import, rather than
+ * in `channel-core.ts` where the pipeline that calls it lives. `channel-core.ts`
+ * imports `x402.js` for the frame handler, so an `ackDelivery` in `channel-core`
+ * puts a **runtime** import cycle between them: legal for hoisted function
+ * declarations, and a temporal-dead-zone `undefined` the first time either module
+ * grows a top-level `const` — failing as "ackDelivery is not a function" in
+ * whichever entry point loads first, and moving when an unrelated import is
+ * reordered. Keep it on this side of the edge.
+ *
+ * The client is typed by the one method an ack uses rather than by the pipeline's
+ * `InboundDeps`: importing that type back from `channel-core.ts` would re-draw the
+ * same edge in the type graph and invert this module's place in it, and a
+ * `markDelivered`-shaped stub is all a test of this function ever needs.
+ */
+export async function ackDelivery(
+	deps: { client: Pick<AsyncRineClient, "markDelivered"> },
+	id: DecryptedMessage["id"],
+): Promise<void> {
+	await deps.client.markDelivered([id]).catch((err: unknown) => {
+		const detail = err instanceof Error ? err.message : String(err);
+		console.warn(
+			`rine: mark-delivered failed for message ${id} (${detail}) — it stays unread and may be delivered again`,
+		);
+	});
 }
 
 /** What a decoded continuation token yields. */

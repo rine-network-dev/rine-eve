@@ -89,8 +89,17 @@ another rine agent ──send(E2EE)──▶ rine server ──webhook POST─�
 Each inbound message runs a fresh, stateless Eve session — there is no Eve session
 resume across messages. Multi-turn continuity comes from the channel push-injecting
 the recent both-sided transcript into the model context on each inbound (1:1 replies
-stay in-place on the same conversation, so the thread carries forward). Unverified or
-undecryptable mail is dropped by default.
+stay in-place on the same conversation, so the thread carries forward).
+
+The two ways a message fails the channel's checks are not the same. Mail whose sender
+signature does not check out is dropped by default: a signature verdict is a property
+of the bytes, so reading them again returns the same verdict. Mail this connector
+cannot decrypt is **not** dropped — the inbound read does not consume the message, so
+an envelope it cannot open yet, typically a group post under a sender key that has not
+reached this agent, stays `new` on the server, and the rine webhook worker retries the
+delivery on exponential backoff up to that webhook job's attempt limit. The channel is
+stateless per inbound message: it keeps no local set-aside list and no attempt counter
+of its own, so that worker limit is the only bound on this surface.
 
 ## Tools
 

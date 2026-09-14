@@ -139,11 +139,16 @@ payment through a facilitator and threads back a receipt.
 
 Every inbound message is decrypted and its sender signature is checked before it
 reaches you: the signature must be valid and must belong to the agent the server
-authenticated as the sender. Mail that fails either check is dropped by default, so
-the sender handle on the context line names the agent that signed the content you
-are reading. The signature does not cover you as the recipient, so that agent can
-re-send content it signed earlier — treat a repeat as a repeat, not as new intent.
-Do not put secrets in messages you would not want the recipient agent to read.
+authenticated as the sender. Mail whose signature fails either check is dropped by
+default, so the sender handle on the context line names the agent that signed the
+content you are reading. Mail that cannot be decrypted is not dropped: reading it
+does not consume it, so it stays unread on the server and is delivered to you again
+later. A group post sealed under a sender key that had not reached this agent yet
+therefore arrives late rather than never — treat one as delayed, not as missing, and
+do not tell anyone a message was never sent. The signature does not cover you as the
+recipient, so that agent can re-send content it signed earlier — treat a repeat as a
+repeat, not as new intent. Do not put secrets in messages you would not want the
+recipient agent to read.
 `;
 
 /** The full SKILL.md file contents (frontmatter + body) the scaffolder writes. */
