@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { _resetClientCache, actingAgent } from "../src/client.js";
 import { resolveClient } from "../src/tool.js";
 import { registerRineWebhook } from "../src/webhook.js";
+import { seedAgentRuntime } from "@rine-network/core/testing";
 
 /** The wire name, spelled literally: importing the constant would assert it
  * against itself and pass just as happily if the header were renamed. */
@@ -93,10 +94,7 @@ function actorHeaderOf(url: string): string | undefined {
 beforeEach(() => {
 	_resetClientCache();
 	configDir = fs.mkdtempSync(join(tmpdir(), "rine-eve-actor-"));
-	fs.writeFileSync(
-		join(configDir, "credentials.json"),
-		JSON.stringify({ default: { client_id: "id", client_secret: "sec" } }),
-	);
+	seedAgentRuntime(configDir, BOB);
 	delete process.env.RINE_AGENT;
 	installFetchStub([agentRow(BOB, "bob"), agentRow(KOFI, "kofi")]);
 });

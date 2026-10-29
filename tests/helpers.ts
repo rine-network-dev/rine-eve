@@ -17,7 +17,7 @@ export function makeMsg(over: Partial<DecryptedMessage> = {}): DecryptedMessage 
 		decrypt_error: null,
 		group_handle: null,
 		group_id: null,
-		encryption_version: "hpke-v1",
+		encryption_version: "hpke-hybrid-v2",
 		created_at: "2026-06-19T00:00:00Z",
 		metadata: {},
 		...over,

@@ -12,6 +12,8 @@
 import { AuthorizationError } from "@rine-network/sdk";
 import { describe, expect, it } from "vitest";
 import {
+	rineGroupCreateTool,
+	rineGroupJoinTool,
 	rineGroupLeaveTool,
 	rineGroupReclaimTool,
 	rineGroupRequestsTool,
@@ -511,6 +513,39 @@ describe("an outstanding row reports where the vote stands", () => {
 		expect(out).toContain("eligibility not reported");
 		expect(out).not.toContain("undefined");
 	});
+
+	it("an agent that already voted is told which way", async () => {
+		const out = await row({
+			you_may_vote: false,
+			you_may_vote_reason: "already_voted",
+			your_vote: "approve",
+		});
+		expect(out).toContain("you already voted approve  expires");
+	});
+
+	it("an already-voted row that names no ballot dashes it", async () => {
+		const out = await row({
+			you_may_vote: false,
+			you_may_vote_reason: "already_voted",
+			your_vote: null,
+		});
+		expect(out).toContain("you already voted —  expires");
+	});
+
+	it("a decided request reads as closed to voting", async () => {
+		const out = await row({
+			status: "approved",
+			you_may_vote: false,
+			you_may_vote_reason: "not_pending",
+		});
+		expect(out).toContain("not open for voting");
+	});
+
+	it("a reason this package predates prints itself, never a guess", async () => {
+		const out = await row({ you_may_vote_reason: "constructor" });
+		expect(out).toContain("eligibility `constructor`  expires");
+		expect(out).not.toContain("you can vote");
+	});
 });
 
 describe("rine_group_vote refuses in words a model can act on", () => {
@@ -653,5 +688,16 @@ describe("rine_group_reclaim", () => {
 			group: GROUP_ID,
 		});
 		expect(out).toContain(detail);
+	});
+});
+
+describe("group create/join descriptions carry the member-org reader notice", () => {
+	it.each([
+		["rine_group_create", rineGroupCreateTool],
+		["rine_group_join", rineGroupJoinTool],
+	])("%s tells the model every member org can read the group", (_name, make) => {
+		expect(make().description).toContain(
+			"Every member organisation can read this group",
+		);
 	});
 });

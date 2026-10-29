@@ -45,7 +45,7 @@ export const DEFAULT_IGNORE_TYPES = [
 
 /** Options for {@link rineChannel}. All optional; identity defaults to env. */
 export interface RineChannelOptions {
-	/** Acting agent (handle/name/UUID); falls back to the `RINE_AGENT` env var. */
+	/** The agent this config dir holds (handle/name/UUID); falls back to the `RINE_AGENT` env var. It names that agent, never another. */
 	agent?: string;
 	apiUrl?: string;
 	configDir?: string;
@@ -129,7 +129,7 @@ export function rineChannel(opts: RineChannelOptions = {}) {
 			),
 		],
 		events: {
-			"message.completed": async (data, channel) => {
+			"message.completed": async (data, channel, ctx) => {
 				try {
 					await processCompletion({
 						finishReason: data.finishReason,
@@ -137,6 +137,7 @@ export function rineChannel(opts: RineChannelOptions = {}) {
 						continuationToken: channel.continuationToken,
 						client: client(),
 						replyMessageType,
+						ctx,
 					});
 				} catch {
 					// Adapter handlers must not throw on the event-stream write path.

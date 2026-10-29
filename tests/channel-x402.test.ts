@@ -212,6 +212,38 @@ describe("x402 auto-pay — opt-in, default OFF, threshold-bounded", () => {
 		const ctx = (r.calls[0]?.input.context ?? []).join("\n");
 		expect(ctx).toContain("auto-pay declined");
 	});
+
+	it("surfaces an inauthentic quote with its code when auto-pay refuses it", async () => {
+		const { client } = fakeClient({
+			read: async () =>
+				makeMsg({ verified: true, type: X402_MESSAGE_TYPE.PAYMENT_REQUIRED, plaintext: quotePlaintext }),
+			payments: {
+				pay: async () => {
+					throw new X402Error("inauthentic-sender", "signed by someone else");
+				},
+			},
+		});
+		const r = recSend();
+		await processInbound(mkDeps({ client, send: r.send, autoPay: true }));
+		const ctx = (r.calls[0]?.input.context ?? []).join("\n");
+		expect(ctx).toContain("auto-pay declined (inauthentic-sender)");
+	});
+
+	it("surfaces a quote with the retryable code when auto-pay cannot read the sender's key", async () => {
+		const { client } = fakeClient({
+			read: async () =>
+				makeMsg({ verified: true, type: X402_MESSAGE_TYPE.PAYMENT_REQUIRED, plaintext: quotePlaintext }),
+			payments: {
+				pay: async () => {
+					throw new X402Error("sender-unverifiable", "signing key could not be checked");
+				},
+			},
+		});
+		const r = recSend();
+		await processInbound(mkDeps({ client, send: r.send, autoPay: true }));
+		const ctx = (r.calls[0]?.input.context ?? []).join("\n");
+		expect(ctx).toContain("auto-pay declined (sender-unverifiable)");
+	});
 });
 
 describe("x402 prose suppression — completion/failure never write into a payment thread", () => {

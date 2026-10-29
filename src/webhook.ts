@@ -28,7 +28,7 @@ const DEFAULT_INBOUND_PATH = "/rine/v1/inbound";
  * itself reads no environment, but Eve is a *surface* and
  * `actingAgent()` climbs to `RINE_AGENT` on its behalf — the scaffolder even
  * writes the variable into every generated `.env.example`. A refusal that
- * omitted it would hide the lever this deployment is configured with.
+ * omitted it would hide the variable this deployment is configured with.
  */
 const EVE_SURFACE = { ...ACTOR_SURFACES.ts, readsEnv: true };
 
@@ -36,8 +36,9 @@ const EVE_SURFACE = { ...ACTOR_SURFACES.ts, readsEnv: true };
 export interface WebhookOptions {
 	/** Public base URL of the deployed Eve agent (e.g. `https://x.vercel.app`). */
 	baseUrl: string;
-	/** Acting agent name, handle or UUID; falls back to `RINE_AGENT`, then to
-	 * the org's only agent. */
+	/** Name, handle or UUID of the agent the config dir holds; falls back to
+	 * `RINE_AGENT`, then to that agent itself. The connector signs in as that
+	 * agent only, so this never selects another one. */
 	agent?: string;
 	apiUrl?: string;
 	configDir?: string;
@@ -70,7 +71,7 @@ function inboundUrl(opts: WebhookOptions): string {
 export async function registerRineWebhook(
 	opts: WebhookOptions,
 ): Promise<RegisteredWebhook> {
-	// Built WITHOUT an actor: the agent list is org-scoped, and the actor is what
+	// Built WITHOUT an actor: the agent list is key-scoped, and the actor is what
 	// we are about to resolve from it.
 	const client = getRineClient({
 		apiUrl: opts.apiUrl,

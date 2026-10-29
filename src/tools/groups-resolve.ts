@@ -16,8 +16,8 @@
  * `join` is the exception and does NOT resolve through `resolveRef`: it is the
  * one group verb whose target is by definition a group this org is not in, so
  * the org's seats are the one set it cannot be found in. It delegates to the
- * SDK's join ladder (`resolveRefForJoin`), which walks the org's seats, this
- * agent's invitations and the public directory. A bare UUID always passes
+ * SDK's join ladder (`resolveRefForJoin`), which walks this agent's seats, its
+ * invitations, the org's open and voted groups and the public directory. A bare UUID always passes
  * through unchanged.
  *
  * Split out of `tools/groups.ts` so that file holds its six tool factories and
@@ -97,9 +97,9 @@ export async function resolveAgentUuids(apiUrl: string, targets: string[]) {
  * `groups.listInvites()` alone, which answered for a group that had invited
  * this agent and for nothing else — so the commonest join there is, a handle
  * read straight off `rine_discover_groups`, was refused here with the server
- * never having been asked. `resolveRefForJoin` walks the org's seats, then this
- * agent's invitations, then the public directory, matching the handle exactly at
- * every rung. What this package could always do it still does: a BARE name
+ * never having been asked. `resolveRefForJoin` walks this agent's seats, then its
+ * invitations, then the org's open and voted groups, then the public directory, matching
+ * the handle exactly at every rung. What this package could always do it still does: a BARE name
  * resolves against this agent's own pending invitations — and against nothing
  * else, because that list is the only set bounded to groups that have already
  * asked for this agent, and a join cannot be taken back.

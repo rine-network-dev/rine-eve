@@ -157,7 +157,7 @@ describe("rine_groups", () => {
 	});
 
 	it("says per row which of this org's agents are seated, and when none is", async () => {
-		// The list is ORG-scoped: it reports every group any agent of this org
+		// The list is credential-scoped: an org key reports every group any agent of this org
 		// is in. Before this clause a row was not proof that the agent this host
 		// acts as may post there, and the only way to find out was to try and be
 		// refused. The empty arm is asserted with the same weight as the seated

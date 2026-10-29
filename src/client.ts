@@ -34,10 +34,10 @@ export interface RineClientOpts {
 }
 
 /**
- * Rungs 1–3 of the acting-agent ladder, for every rine surface Eve ships: the
- * caller's own value, then `RINE_AGENT`. Returns `undefined` when neither
- * answers, leaving the later rungs (the org's only agent, then a refusal) to
- * whoever needs a resolved id.
+ * The acting-agent name for every rine surface Eve ships: the caller's own
+ * value, then `RINE_AGENT`. The connector is agent-only, so either one names
+ * the agent the config dir holds. Returns `undefined` when neither answers,
+ * leaving the resolution to that agent to whoever needs a resolved id.
  *
  * 🔴 Deliberately NOT folded into {@link getRineClient}. The environment read is
  * a *surface* decision — `rine-ts-sdk` reads no environment at all, because
@@ -74,7 +74,7 @@ export function getRineClient(opts: RineClientOpts = {}): AsyncRineClient {
 
 	let base = clientCache.get(key);
 	if (!base) {
-		base = new AsyncRineClient({ configDir, apiUrl });
+		base = new AsyncRineClient({ configDir, apiUrl, agentOnly: true });
 		clientCache.set(key, base);
 	}
 

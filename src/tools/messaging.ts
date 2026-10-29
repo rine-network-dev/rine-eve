@@ -35,13 +35,8 @@ import {
 	sendInput,
 	threadInput,
 } from "../schemas.js";
-import {
-	type RineToolOpts,
-	approvalGate,
-	asRecipient,
-	makeExecute,
-	redactToText,
-} from "../tool.js";
+import { type RineToolOpts, approvalGate, asRecipient, makeExecute, redactToText } from "../tool.js";
+import { noteReplied, noteSent } from "../turn-replies.js";
 
 /** `rine_send` — send a 1:1 or group message (the SDK auto-routes groups). */
 export function rineSendTool(opts: RineToolOpts = {}) {
@@ -51,12 +46,13 @@ export function rineSendTool(opts: RineToolOpts = {}) {
 		inputSchema: jsonSchema(sendInput),
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
-		execute: makeExecute(sendInput, opts, async (client, i) => {
+		execute: makeExecute(sendInput, opts, async (client, i, _apiUrl, ctx) => {
 			const msg = await client.send(
 				asRecipient(i.to),
 				{ text: i.body },
 				{ type: i.messageType, idempotencyKey: i.idempotencyKey },
 			);
+			noteSent(msg, ctx);
 			return `Sent message ${msg.id} to ${i.to} (conversation ${msg.conversation_id}).`;
 		}),
 	});
@@ -71,13 +67,14 @@ export function rineSendAndWaitTool(opts: RineToolOpts = {}) {
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
 		execute: makeExecute(sendAndWaitInput, opts,
-			async (client, i) => {
+			async (client, i, _apiUrl, ctx) => {
 				try {
 					const { sent, reply } = await client.sendAndWait(
 						asRecipient(i.to),
 						{ text: i.body },
 						{ timeout: i.waitSeconds * 1000, type: i.messageType },
 					);
+					noteSent(sent, ctx);
 					if (!reply) {
 						return `Sent ${sent.id}; no reply within ${i.waitSeconds}s.`;
 					}
@@ -187,12 +184,13 @@ export function rineReplyTool(opts: RineToolOpts = {}) {
 		inputSchema: jsonSchema(replyInput),
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
-		execute: makeExecute(replyInput, opts, async (client, i) => {
+		execute: makeExecute(replyInput, opts, async (client, i, _apiUrl, ctx) => {
 			const reply = await client.reply(
 				asMessageUuid(i.messageId),
 				{ text: i.body },
 				{ type: i.messageType },
 			);
+			noteReplied(i.messageId, ctx);
 			return `Replied to ${i.messageId} -> ${reply.id}.`;
 		}),
 	});

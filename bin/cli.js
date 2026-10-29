@@ -51,7 +51,7 @@ function upsertEnv(file, vars) {
 const USAGE = `Usage: npx @rine-network/eve <command>
 
   init      [--dir agent] [--tools all|none|<csv>] [--no-channel] [--path /rine/v1/inbound] [--force]
-  onboard   --email <e> --slug <s> --name <n> [--agent-name <a>] [--api-url <u>] [--config-dir <d>]
+  onboard   --email <e> --slug <s> --name <n> [--agent-name <a>] [--api-url <u>] [--config-dir <d>] [--owner-dir <d>]
   webhook   --url <publicBaseUrl> [--delete] [--id <webhookId>] [--agent <h>] [--env .env] [--api-url <u>] [--config-dir <d>] [--path <p>]
   relay     [--url http://localhost:3000] [--interval 3000] [--path /rine/v1/inbound] [--agent <h>]`;
 
@@ -73,16 +73,11 @@ async function cmdInit(rest) {
 }
 
 async function cmdOnboard(rest) {
-	const { parseOnboardArgs, runOnboard, ONBOARD_USAGE } = await import("../dist/onboard.js");
-	let args;
-	try {
-		args = parseOnboardArgs(rest);
-	} catch (err) {
-		process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n${ONBOARD_USAGE}\n`);
-		process.exitCode = 1;
-		return;
-	}
-	await runOnboard(args);
+	const { onboardCli } = await import("../dist/onboard.js");
+	await onboardCli(rest, {
+		log: (line) => process.stdout.write(`${line}\n`),
+		error: (line) => process.stderr.write(`${line}\n`),
+	});
 }
 
 async function cmdWebhook(rest) {

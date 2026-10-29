@@ -163,7 +163,7 @@ export function formatError(err: unknown): string {
 		return `Invalid input: ${where} — ${first?.message ?? "validation failed"}.`;
 	}
 	if (err instanceof AuthenticationError) {
-		return "rine auth failed — onboard with `npx @rine-network/eve onboard` or set RINE_CONFIG_DIR to your credentials directory.";
+		return "rine auth failed — onboard with `npx @rine-network/eve onboard` or set RINE_CONFIG_DIR to your onboarded agent runtime directory.";
 	}
 	if (err instanceof AuthorizationError) {
 		return `Not authorized: ${err.detail}.`;

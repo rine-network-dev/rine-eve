@@ -103,6 +103,33 @@ describe("rine_pay tool (payer, typed statuses)", () => {
 		expect(out).toContain("wallet-busy —");
 	});
 
+	it("inauthentic-quote when the quote's envelope was not signed by its sender", async () => {
+		const { client } = fakeClient({
+			read: async () => quote(),
+			payments: {
+				pay: async () => {
+					throw new X402Error("inauthentic-sender", "signed by someone else");
+				},
+			},
+		});
+		const out = await run(rinePayTool({ client }), { messageId: "11111111-1111-1111-1111-111111111111" });
+		expect(out).toContain("inauthentic-quote —");
+	});
+
+	it("sender-unverifiable when the quote's sender key could not be read", async () => {
+		const { client } = fakeClient({
+			read: async () => quote(),
+			payments: {
+				pay: async () => {
+					throw new X402Error("sender-unverifiable", "signing key could not be checked");
+				},
+			},
+		});
+		const out = await run(rinePayTool({ client }), { messageId: "11111111-1111-1111-1111-111111111111" });
+		expect(out).toContain("sender-unverifiable —");
+		expect(out).not.toContain("inauthentic-quote");
+	});
+
 	it("an unexpected error becomes a plain string (never a reject)", async () => {
 		const { client } = fakeClient({
 			read: async () => quote(),
@@ -218,5 +245,20 @@ describe("rine_fulfill tool (payee, settle-first)", () => {
 			messageId: "11111111-1111-1111-1111-111111111111",
 		});
 		expect(out).toContain("facilitator-error —");
+	});
+
+	it("sender-unverifiable when the payer's key could not be read", async () => {
+		const { client } = fakeClient({
+			read: async () => paymentMsg(),
+			payments: {
+				fulfill: async () => {
+					throw new X402Error("sender-unverifiable", "signing key could not be checked");
+				},
+			},
+		});
+		const out = await run(rineFulfillTool({ client, facilitator: "payai" }), {
+			messageId: "11111111-1111-1111-1111-111111111111",
+		});
+		expect(out).toContain("sender-unverifiable —");
 	});
 });

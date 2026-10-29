@@ -30,12 +30,7 @@ import type { AsyncRineClient } from "@rine-network/sdk";
 import { renderMessageBody, senderLabel, verifiedNote } from "./format.js";
 import { renderTranscriptContext } from "./transcript.js";
 import { verifyRineSignature } from "./hmac.js";
-import {
-	ackDelivery,
-	encodeReplyToken,
-	messageIdFromWebhook,
-	rememberSeen,
-} from "./inbound.js";
+import { ackDelivery, encodeReplyToken, messageIdFromWebhook, rememberSeen } from "./inbound.js";
 import type { DecryptedMessage } from "./types.js";
 import { handleX402Inbound, isX402Frame } from "./x402.js";
 
@@ -216,10 +211,10 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	// deliver a private reply to one member; it would drop the answer and the
 	// group would hear nothing at all.
 	//
-	// 🔴 messages.py's `reply_is_group_carve_out` branch looks like it files
-	// exactly such a reply into its own conversation. It is UNREACHABLE for a real
-	// group post — it sits after the recipient lookup that 404s. Do not read it as
-	// the server handling this case and delete this guard.
+	// 🔴 `refuse_group_post` (`messages_reply_guards.py`, 422) is the server's
+	// explicit refusal of a reply to a group post. It sits after the destination
+	// lookup that 404s a real group post, so it is not what answers here. Do not
+	// read it as the server handling this case and delete this guard.
 	//
 	// Leaving `m` undefined for groups keeps the broadcast
 	// send()+parentConversationId path in processCompletion/processFailure.

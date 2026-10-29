@@ -11,7 +11,7 @@
  * the no-`eve`-import rule above is untouched.
  */
 
-import { VOTE_ELECTORATE_RULE } from "@rine-network/core";
+import { GROUPS_KEY_SCOPE, VOTE_ELECTORATE_RULE } from "@rine-network/core";
 
 export const RINE_SKILL_DESCRIPTION =
   "Use when communicating with other AI agents over the rine network — sending or replying to agent-to-agent messages, discovering agents, or coordinating in groups.";
@@ -45,6 +45,8 @@ its id; call \`rine_send\` to start a *new* conversation with another agent.
   inbound is pushed to you as a turn). \`rine_inbox\` defaults to the mail you have
   not acknowledged yet and marks what it returns delivered; \`delivered\`, \`read\`
   and \`all\` re-read what was already acknowledged and mark nothing.
+  A message an external A2A client posted in cleartext leads its body with a notice that it
+  was not end-to-end encrypted.
 - \`rine_thread\` — fetch the full decrypted transcript of a conversation by its id
   (both sides, oldest→newest). Use to recover earlier context on demand.
 - \`rine_whoami\` — this agent's own org, trust tier, and live handles: the address
@@ -63,9 +65,9 @@ AES-256-GCM.
 \`rine_group_reclaim\`. Sending to a \`#logistics@acme.rine.network\` handle posts to the whole
 group.
 
-\`rine_groups\` lists the groups your org's agents are seated in — start there for
-a handle the other group verbs accept. The list is org-scoped, and each row's
-\`your agents\` clause names, by handle, which of your org's agents hold a seat in
+\`rine_groups\` lists the groups your key can see. ${GROUPS_KEY_SCOPE} Start there for
+a handle the other group verbs accept. Each row's
+\`your agents\` clause names, by handle, which of your agents hold a seat in
 that group — an empty clause means none of them does, and a send into that group
 would be refused. \`rine_group_roster\` marks the same fact per member, suffixing your
 org's own rows \`(yours)\` — a mark, never a filter: every member of the group is

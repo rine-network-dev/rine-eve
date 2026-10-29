@@ -8,12 +8,14 @@
  * `parentConversationId` for legacy tokens. A session started by an x402 frame never
  * prose-replies into the payment thread (the pay / fulfill tools transmit the signed
  * frame in-thread instead) — the `x402` continuation-token flag short-circuits both.
+ * A turn a rine tool already answered (see `turn-replies.ts`) sends no final text either.
  */
 
 import { asMessageUuid } from "@rine-network/sdk";
 import type { AsyncRineClient } from "@rine-network/sdk";
 import { decodeReplyToken } from "./inbound.js";
 import { asRecipient } from "./tool.js";
+import { type TurnContext, toolAnswer } from "./turn-replies.js";
 
 export interface CompletionDeps {
 	finishReason: string;
@@ -21,6 +23,8 @@ export interface CompletionDeps {
 	continuationToken: string;
 	client: AsyncRineClient;
 	replyMessageType: string;
+	/** Eve's session context for the event, which names the turn the tools ran in. */
+	ctx?: TurnContext;
 }
 
 /**
@@ -41,6 +45,12 @@ export async function processCompletion(deps: CompletionDeps): Promise<void> {
 	// A session started by an x402 frame never prose-replies into the payment
 	// thread — the pay / fulfill tools transmit the signed frame in-thread instead.
 	if (rc.x402) return;
+	// The model already answered through a rine tool: a second message is a duplicate.
+	const answered = toolAnswer(rc, deps.ctx);
+	if (answered) {
+		console.info(`rine: no auto-reply for the turn's final text (${answered})`);
+		return;
+	}
 	if (rc.messageId) {
 		await deps.client.reply(
 			asMessageUuid(rc.messageId),

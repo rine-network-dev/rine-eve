@@ -1,5 +1,6 @@
 /**
- * Item 18 on the Eve surface — a completed handle is reported, not silent.
+ * Handle completion on the Eve surface — a completed handle is reported, not
+ * silent.
  *
  * `resolveToUuid` completes a short handle before WebFinger sees it — `peer@acme`
  * is looked up as `peer@acme.rine.network` — and answers with the resolved UUID,
@@ -36,15 +37,6 @@ vi.mock("@rine-network/core", async () => {
 		);
 	return {
 		...actual,
-		loadCredentials: vi.fn(() => ({
-			default: {
-				org_id: "org-1",
-				agent_handle: "eve@acme",
-				agent_id: "22222222-2222-4222-8222-222222222222",
-				signing_key: "stub",
-				encryption_key: "stub",
-			},
-		})),
 		getOrRefreshToken: vi.fn(async () => "stub-token"),
 	};
 });

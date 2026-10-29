@@ -21,7 +21,7 @@ const DEFAULT_INBOUND_PATH = "/rine/v1/inbound";
 
 /** The default-export channel file (`agent/channels/rine.ts`). */
 export function channelFileContent(): string {
-	return `import { rineChannel } from "@rine-network/eve/channel";\n\n// Inbound rine messages start/resume a session here; replies flow back over rine.\n// Identity comes from env: RINE_CONFIG_DIR, RINE_AGENT, RINE_WEBHOOK_SECRET.\nexport default rineChannel();\n`;
+	return `import { rineChannel } from "@rine-network/eve/channel";\n\n// Inbound rine messages start/resume a session here; replies flow back over rine.\n// Identity comes from env: RINE_CONFIG_DIR (one agent per dir), optional RINE_AGENT, RINE_WEBHOOK_SECRET.\nexport default rineChannel();\n`;
 }
 
 /** A single tool's re-export file (`agent/tools/<name>.ts`). */
@@ -33,6 +33,7 @@ export function toolFileContent(spec: RineToolMeta): string {
 export function envExampleBlock(path: string): string {
 	return `${ENV_MARKER}
 RINE_CONFIG_DIR=
+# Optional: when set, must name the agent RINE_CONFIG_DIR holds.
 RINE_AGENT=
 # RINE_API_URL=https://rine.network
 RINE_WEBHOOK_SECRET=

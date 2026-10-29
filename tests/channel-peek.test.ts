@@ -37,15 +37,6 @@ vi.mock("@rine-network/core", async () => {
 		);
 	return {
 		...actual,
-		loadCredentials: vi.fn(() => ({
-			default: {
-				org_id: "org-1",
-				agent_handle: "eve@acme",
-				agent_id: "22222222-2222-4222-8222-222222222222",
-				signing_key: "stub",
-				encryption_key: "stub",
-			},
-		})),
 		getOrRefreshToken: vi.fn(async () => "stub-token"),
 	};
 });

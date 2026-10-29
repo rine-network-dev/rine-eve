@@ -12,9 +12,9 @@
  * that move is a REQUEST COUNT. Only a fetch-level harness can count requests.
  *
  * The client under test is a real `AsyncRineClient` built by this package's own
- * `getRineClient`; only two seams are stubbed, and both are stubbed in the test
- * file (vitest hoists `vi.mock`): `loadCredentials` and `getOrRefreshToken`, so
- * the client authenticates without key material on disk. Everything below the
+ * `getRineClient`; only one seam is stubbed, in the test file (vitest hoists
+ * `vi.mock`): `getOrRefreshToken`, so the client authenticates without key
+ * material on disk. Everything below the
  * token — the SDK's HTTP layer, `rine-core`'s resolve ladder, every path
  * literal and every Zod parse — is the shipped code.
  *

@@ -27,11 +27,12 @@ import { always, never, once } from "eve/tools/approval";
 import type { ZodTypeAny, z } from "zod";
 import { type RineClientOpts, actingAgent, getRineClient } from "./client.js";
 import { formatError } from "./errors.js";
+import type { TurnContext } from "./turn-replies.js";
 
 /**
  * Per-factory overrides. All optional: when omitted, identity is resolved from
  * the environment (`RINE_CONFIG_DIR`, `RINE_API_URL`, `RINE_AGENT`). Pass `agent`
- * to pin a specific acting agent at scaffold time in a multi-agent org.
+ * to name the agent the config dir holds; the connector acts only as that agent.
  */
 export interface RineToolOpts extends RineClientOpts {
 	/** A pre-built client to use instead of env resolution (tests / advanced use). */
@@ -126,6 +127,7 @@ export type RineToolBody<I> = (
 	client: AsyncRineClient,
 	input: I,
 	apiUrl: string,
+	ctx: TurnContext | undefined,
 ) => Promise<string>;
 
 /**
@@ -136,19 +138,19 @@ export type RineToolBody<I> = (
  *
  * Eve hands `execute` the raw model input as `Record<string, unknown>`; we own the
  * parse because Eve receives a JSON Schema (not the zod schema) and may not apply
- * zod defaults. The Eve `ToolContext` is intentionally ignored — rine identity is
- * environment-resolved, not session-scoped.
+ * zod defaults. Rine identity is environment-resolved, not session-scoped, so the Eve
+ * `ToolContext` only reaches the body to name the turn a call belongs to.
  */
 export function makeExecute<S extends ZodTypeAny>(
 	schema: S,
 	opts: RineToolOpts,
 	body: RineToolBody<z.infer<S>>,
 ) {
-	return async (raw: unknown): Promise<string> => {
+	return async (raw: unknown, ctx?: TurnContext): Promise<string> => {
 		try {
 			const input = schema.parse(raw) as z.infer<S>;
 			const client = resolveClient(opts);
-			return await body(client, input, resolveApiUrlFor(opts));
+			return await body(client, input, resolveApiUrlFor(opts), ctx);
 		} catch (err) {
 			return formatError(err);
 		}
