@@ -154,6 +154,27 @@ describe("rine tools (env identity via injected client)", () => {
 		expect(delivered[0]).toEqual(["a"]);
 	});
 
+	it("rine_inbox acks a row whose sender signature failed and renders its refusal", async () => {
+		const { client, delivered } = fakeClient({
+			inbox: async () => ({
+				items: [
+					makeMsg({
+						id: "forged",
+						decrypt_error: "sender mismatch",
+						verified: false,
+						verification_status: "sender-mismatch",
+					}),
+					makeMsg({ id: "locked", decrypt_error: "no key" }),
+				],
+			}),
+		});
+		const out = await run(rineInboxTool({ client }), {});
+		// Refused, not unreadable: it never heals, so it leaves the inbox. The
+		// unopenable row beside it stays new.
+		expect(delivered[0]).toEqual(["forged"]);
+		expect(out).toContain("sender mismatch");
+	});
+
 	it("rine_whoami renders the org, tier and live handles only", async () => {
 		const { client } = fakeClient({
 			whoami: async () => ({

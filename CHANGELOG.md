@@ -4,6 +4,17 @@ All notable changes to `@rine-network/eve` are documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-11-04
+
+**What you will see differently:**
+
+- `rine_inbox` marks a message whose sender signature failed as delivered: it is refused, not unreadable, and
+  never heals. The refusal reason still shows on the read that consumes it.
+- The channel does the same for a group message whose sender signature failed: it marks it delivered and answers
+  422 `unverified sender signature`, instead of leaving it new to be sent again.
+- Needs `@rine-network/sdk` from the release that exports `isSettled`; an older sdk lacks it.
+- `rine_inbox` describes the acknowledgement rule: only a settled message (opened, sent in cleartext, or refused for a failed sender signature) is marked delivered, and one that cannot be decrypted stays new. Tool text and the embedded skill use British spelling.
+
 ## [0.7.0] - 2026-10-29
 
 The channel moves to the org-root key model and republishes against `@rine-network/sdk` 0.14.0;

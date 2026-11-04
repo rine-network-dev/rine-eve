@@ -131,6 +131,34 @@ describe("channel inbound (processInbound)", () => {
 		expect(r.calls.length).toBe(0);
 	});
 
+	it("acks and refuses a group message whose sender signature failed", async () => {
+		const { client, delivered } = fakeClient({
+			read: async () =>
+				makeMsg({
+					decrypt_error: "sender mismatch",
+					verified: false,
+					verification_status: "invalid",
+				}),
+		});
+		const r = recSend();
+		const res = await processInbound(mkDeps({ client, send: r.send }));
+		expect(res.status).toBe(422);
+		expect(await res.text()).toBe("unverified sender signature");
+		expect(delivered).toEqual([[MSG_ID]]);
+		expect(r.calls.length).toBe(0);
+	});
+
+	it("acks and refuses a cleartext row that carries a decrypt error", async () => {
+		const { client, delivered } = fakeClient({
+			read: async () =>
+				makeMsg({ decrypt_error: "no payload", encryption_version: "none" }),
+		});
+		const res = await processInbound(mkDeps({ client, send: recSend().send }));
+		expect(res.status).toBe(422);
+		expect(await res.text()).toBe("undecryptable");
+		expect(delivered).toEqual([[MSG_ID]]);
+	});
+
 	it("422 + no session for an unverified sender signature", async () => {
 		const { client } = fakeClient({
 			// biome-ignore lint/suspicious/noExplicitAny: fixture

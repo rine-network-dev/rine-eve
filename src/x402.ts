@@ -80,7 +80,7 @@ export function renderX402Body(msg: DecryptedMessage): string {
 		const pp = (p ?? {}) as PaymentPayload;
 		const acc = pp.accepted;
 		const from = pp.payload?.authorization?.from ?? "unknown payer";
-		return `x402 signed payment authorization from ${from}${
+		return `x402 signed payment authorisation from ${from}${
 			acc ? ` for ${requirementLine(acc)}` : ""
 		}.`;
 	}

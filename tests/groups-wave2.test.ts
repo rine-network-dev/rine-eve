@@ -146,7 +146,7 @@ describe("the create head says what the group it just made actually runs", () =>
 			visibility: "private",
 		});
 		expect(out).toBe(
-			`Created group #ops@acme (id ${GROUP_ID}, MLS E2EE, enrollment closed).`,
+			`Created group #ops@acme (id ${GROUP_ID}, MLS E2EE, enrolment closed).`,
 		);
 	});
 
@@ -186,7 +186,7 @@ describe("the create head says what the group it just made actually runs", () =>
 			visibility: "private",
 		});
 		expect(out).toBe(
-			`Created group #ops@acme (id ${GROUP_ID}, sender-key E2EE, enrollment closed).`,
+			`Created group #ops@acme (id ${GROUP_ID}, sender-key E2EE, enrolment closed).`,
 		);
 	});
 });

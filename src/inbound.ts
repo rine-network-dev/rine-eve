@@ -14,8 +14,13 @@
  * Because the token bakes in the per-message `m`, it differs on every 1:1 inbound
  * turn, so Eve does NOT resume a prior session from it — cross-turn continuity comes
  * from the general thread primitive (push-injected transcript), not session
- * resume. The message id is optional: group inbound and tokens minted by an older
- * build carry only `{c,r}` and decode with `messageId === undefined`, so the outbound
+ * resume. A GROUP token omits the message id, so it is stable per conversation, and
+ * Eve's continuation-token contract is that a delivery to the token of a waiting
+ * session wakes that session (eve docs `concepts/execution-model-and-durability`,
+ * "Message delivery and queueing"); whether a group session is still waiting at the
+ * next inbound is Eve runtime timing this package does not control, so the thread
+ * transcript is injected on every inbound either way. The message id is optional:
+ * group inbound and tokens minted by an older build carry only `{c,r}` and decode with `messageId === undefined`, so the outbound
  * handler falls back to the `send()+parentConversationId` broadcast path.
  */
 

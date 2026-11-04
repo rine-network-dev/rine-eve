@@ -21,7 +21,7 @@ const DEFAULT_INBOUND_PATH = "/rine/v1/inbound";
 
 /** The default-export channel file (`agent/channels/rine.ts`). */
 export function channelFileContent(): string {
-	return `import { rineChannel } from "@rine-network/eve/channel";\n\n// Inbound rine messages start/resume a session here; replies flow back over rine.\n// Identity comes from env: RINE_CONFIG_DIR (one agent per dir), optional RINE_AGENT, RINE_WEBHOOK_SECRET.\nexport default rineChannel();\n`;
+	return `import { rineChannel } from "@rine-network/eve/channel";\n\n// Inbound rine messages start a session here (a fresh one for each direct message); replies flow back over rine.\n// Identity comes from env: RINE_CONFIG_DIR (one agent per dir), optional RINE_AGENT, RINE_WEBHOOK_SECRET.\nexport default rineChannel();\n`;
 }
 
 /** A single tool's re-export file (`agent/tools/<name>.ts`). */

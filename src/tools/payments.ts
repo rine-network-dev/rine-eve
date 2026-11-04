@@ -97,7 +97,7 @@ function mapPayError(err: unknown, autoPay: boolean): string {
 				if (autoPay) {
 					return status(
 						PAY_STATUS.ABOVE_AUTO_PAY_THRESHOLD,
-						`${err.message}. Re-run without autoPay to authorize explicitly.`,
+						`${err.message}. Re-run without autoPay to authorise explicitly.`,
 					);
 				}
 				return status(PAY_STATUS.POLICY_REFUSED, err.message);
@@ -113,7 +113,7 @@ function mapPayError(err: unknown, autoPay: boolean): string {
 export function rinePayTool(opts: RineToolOpts = {}) {
 	return defineTool({
 		description:
-			"Pay a received x402 payment request (rine.v1.x402_payment_required) in-thread. Decrypts the quote, selects an acceptable requirement under your local spend policy (deny-by-default, caps), signs an EIP-3009 stablecoin authorization with your wallet, and sends the signed payment back in the same conversation. The spend is reserved as the last act before the send (fail-closed, permanent, no refund). Returns a typed `status` — `payment-submitted` on success, else `no-wallet` / `not-payment-required` / `policy-refused` / `above-auto-pay-threshold` / `already-paid` / `wallet-busy` / `inauthentic-quote` (the quote was not signed by the agent that sent it) / `sender-unverifiable` (the sender's signing key could not be read, so the quote could not be checked; nothing was paid or reserved, retry later). Does NOT wait for settlement; the receipt arrives later as an ordinary inbox message.",
+			"Pay a received x402 payment request (rine.v1.x402_payment_required) in-thread. Decrypts the quote, selects an acceptable requirement under your local spend policy (deny-by-default, caps), signs an EIP-3009 stablecoin authorisation with your wallet, and sends the signed payment back in the same conversation. The spend is reserved as the last act before the send (fail-closed, permanent, no refund). Returns a typed `status` — `payment-submitted` on success, else `no-wallet` / `not-payment-required` / `policy-refused` / `above-auto-pay-threshold` / `already-paid` / `wallet-busy` / `inauthentic-quote` (the quote was not signed by the agent that sent it) / `sender-unverifiable` (the sender's signing key could not be read, so the quote could not be checked; nothing was paid or reserved, retry later). Does NOT wait for settlement; the receipt arrives later as an ordinary inbox message.",
 		inputSchema: jsonSchema(payInput),
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
@@ -204,7 +204,7 @@ function renderFulfill(res: FulfillResult): string {
 export function rineFulfillTool(opts: RineToolOpts = {}) {
 	return defineTool({
 		description:
-			"Fulfill a received x402 payment (rine.v1.x402_payment): verify the signed authorization and settle it on-chain via your configured facilitator, then send the settlement receipt back in-thread. Settle-first — on a failed verification, a `success:false` receipt is sent so the payer reaches a terminal state. Facilitator verify/settle is plain external HTTP, never a rine endpoint. Returns a typed `status` — `settled` on success, else `settlement-failed` / `verification-failed` / `facilitator-error` / `sender-unverifiable` (the payer's signing key could not be read, so the payment could not be checked; nothing is settled and no receipt is sent, retry later) / `no-facilitator` / `not-payment`.",
+			"Fulfil a received x402 payment (rine.v1.x402_payment): verify the signed authorisation and settle it on-chain via your configured facilitator, then send the settlement receipt back in-thread. Settle-first — on a failed verification, a `success:false` receipt is sent so the payer reaches a terminal state. Facilitator verify/settle is plain external HTTP, never a rine endpoint. Returns a typed `status` — `settled` on success, else `settlement-failed` / `verification-failed` / `facilitator-error` / `sender-unverifiable` (the payer's signing key could not be read, so the payment could not be checked; nothing is settled and no receipt is sent, retry later) / `no-facilitator` / `not-payment`.",
 		inputSchema: jsonSchema(fulfillInput),
 		outputSchema: STRING_OUTPUT,
 		needsApproval: approvalGate(opts),
@@ -213,7 +213,7 @@ export function rineFulfillTool(opts: RineToolOpts = {}) {
 			if (msg.type !== X402_MESSAGE_TYPE.PAYMENT) {
 				return status(
 					FULFILL_STATUS.NOT_PAYMENT,
-					`message ${i.messageId} is type '${msg.type}', not an x402 payment authorization.`,
+					`message ${i.messageId} is type '${msg.type}', not an x402 payment authorisation.`,
 				);
 			}
 			const facilitator = resolveFacilitator(opts);

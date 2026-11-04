@@ -6,7 +6,8 @@
  *
  *   - INBOUND (`processInbound`): HMAC-verify (transport auth) → parse → dedupe
  *     → `client.read(id, { peek: true })` to HPKE-decrypt + verify the sender's
- *     Ed25519 signature (content auth) → loop-guard → ack → start/resume the session.
+ *     Ed25519 signature (content auth) → loop-guard → ack → start a session
+ *     (fresh for a direct message; a group's token is stable, see `inbound.ts`).
  *
  * The read PEEKS: it suppresses the server's delivery mark, so nothing is consumed
  * as a side effect of looking at it. Consuming a row is {@link ackDelivery}'s job,
@@ -25,7 +26,7 @@
  */
 
 import { isAuthenticityFailure } from "@rine-network/core";
-import { asMessageUuid } from "@rine-network/sdk";
+import { asMessageUuid, isSettled } from "@rine-network/sdk";
 import type { AsyncRineClient } from "@rine-network/sdk";
 import { renderMessageBody, senderLabel, verifiedNote } from "./format.js";
 import { renderTranscriptContext } from "./transcript.js";
@@ -143,12 +144,23 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 		// rather than an already-consumed one.
 		return new Response("read failed", { status: 503 });
 	}
-	// The one arm that refuses WITHOUT acking and WITHOUT `rememberSeen`, so the
-	// worker's next attempt re-reads this id instead of short-circuiting on the
-	// in-memory dedupe. `422` is kept deliberately — peek already stops the loss,
-	// and the status contract documented above (`4xx` terminal, `5xx` transient) is
-	// what an operator's relay reads.
-	if (msg.decrypt_error) return new Response("undecryptable", { status: 422 });
+	// The unopened-but-unsettled arm refuses WITHOUT acking and WITHOUT
+	// `rememberSeen`, so the worker's next attempt re-reads this id instead of
+	// short-circuiting on the in-memory dedupe. `422` is kept deliberately — peek
+	// already stops the loss, and the status contract documented above (`4xx`
+	// terminal, `5xx` transient) is what an operator's relay reads.
+	if (msg.decrypt_error) {
+		// A row that settled without opening is refused for good: a failed sender
+		// signature never heals, and a cleartext row has nothing to open. Ack it so
+		// it stops being re-sent. Anything else may still open once its key arrives.
+		if (isSettled(msg)) {
+			await ackDelivery(deps, msg.id);
+			return isAuthenticityFailure(msg.verification_status)
+				? new Response("unverified sender signature", { status: 422 })
+				: new Response("undecryptable", { status: 422 });
+		}
+		return new Response("undecryptable", { status: 422 });
+	}
 	if (!msg.verified && !deps.acceptUnverified) {
 		// 🔴 `unverifiable` is NOT a refusal — it is the ABSENCE of a verdict, and it
 		// heals the moment the sender's signing key can be fetched. This arm used to
@@ -229,8 +241,9 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	// peeks, so this call is the ONLY thing that takes the row out of `status=new`.
 	await ackDelivery(deps, msg.id);
 	rememberSeen(deps.seen, messageId);
-	// The Eve session is stateless per inbound, so push-inject the recent
-	// thread as role-tagged context for cross-turn memory. The sender/where line stays
+	// A direct message always starts a fresh Eve session, and a group's stable token may
+	// resume one (see `inbound.ts`), so continuity must not depend on session resume:
+	// push-inject the recent thread as role-tagged context for cross-turn memory. The sender/where line stays
 	// FIRST. Best-effort: a thread fetch failure must NOT block delivery — fall back to
 	// just the sender line. The current inbound was already persisted server-side by
 	// the sender's own send, so it is the NEWEST entry in the fetched window (a peeked

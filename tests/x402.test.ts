@@ -42,7 +42,7 @@ describe("renderX402Body — structured payment context, no ciphertext", () => {
 				payload: { authorization: { from: "0xPAYER" } },
 			},
 		});
-		expect(renderX402Body(msg)).toContain("authorization from 0xPAYER");
+		expect(renderX402Body(msg)).toContain("authorisation from 0xPAYER");
 	});
 
 	it("renders a settlement receipt outcome verbatim", () => {

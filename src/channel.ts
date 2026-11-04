@@ -5,7 +5,8 @@
  * own `slackChannel()` uses exactly this factory-then-re-export shape.
  *
  * It makes an Eve agent a first-class, E2EE-reachable citizen of the rine network:
- * inbound rine webhooks start/resume a durable session; the terminal assistant
+ * each inbound rine webhook starts an Eve session (always a fresh one for a direct
+ * message; see `inbound.ts` for group conversations); the terminal assistant
  * message is encrypted and threaded back over rine. The actual pipeline lives in
  * `channel-core.ts` (pure, testable); this file is the `defineChannel` wiring.
  */

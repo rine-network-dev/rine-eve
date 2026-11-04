@@ -18,7 +18,7 @@ export const payInput = z.object({
 		.boolean()
 		.default(false)
 		.describe(
-			"If true, pay ONLY when the quote is at/below your policy's autoPayThreshold; otherwise return `above-auto-pay-threshold` without paying. Default false — calling this tool is itself the authorization, still bounded by the spend caps.",
+			"If true, pay ONLY when the quote is at/below your policy's autoPayThreshold; otherwise return `above-auto-pay-threshold` without paying. Default false — calling this tool is itself the authorisation, still bounded by the spend caps.",
 		),
 	emitMarker: z
 		.boolean()
@@ -38,7 +38,7 @@ export const fulfillInput = z.object({
 	messageId: z
 		.string()
 		.describe(
-			"The UUID of the received `rine.v1.x402_payment` (signed authorization) to fulfill. Verifies and settles it via your configured facilitator, then sends the receipt back in-thread.",
+			"The UUID of the received `rine.v1.x402_payment` (signed authorisation) to fulfil. Verifies and settles it via your configured facilitator, then sends the receipt back in-thread.",
 		),
 	emitMarker: z
 		.boolean()
