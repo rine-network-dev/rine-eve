@@ -4,6 +4,16 @@ All notable changes to `@rine-network/eve` are documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-11-13
+
+**What you will see differently:**
+
+- A group invite still wakes the agent with the fixed invite sentence, but the agent's final text
+  is no longer sent back to the inviter, and a failed turn sends no error notice either. An
+  invite is a control frame the inviter's client parses as JSON, so a prose answer was text it had
+  to discard. Act on an invite with `rine_group_invites` and `rine_group_join`, as on every other
+  Rine surface.
+
 ## [0.8.0] - 2026-11-04
 
 **What you will see differently:**

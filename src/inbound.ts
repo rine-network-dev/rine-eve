@@ -104,6 +104,13 @@ export interface ReplyContext {
 	 * this is set.
 	 */
 	readonly x402?: boolean;
+	/**
+	 * Marks a session whose terminal assistant message is never replied into the
+	 * thread: the inbound is a control frame (a group invite) its sender's ingest
+	 * parses as JSON, so prose back would be typed as one. The model acts through
+	 * its tools instead.
+	 */
+	readonly noReply?: boolean;
 }
 
 /** base64url (no padding) encode of a UTF-8 string. */
@@ -125,9 +132,9 @@ export function encodeReplyToken(
 	conversationId: string,
 	replyTarget: string,
 	messageId?: string,
-	opts: { x402?: boolean } = {},
+	opts: { x402?: boolean; noReply?: boolean } = {},
 ): string {
-	const payload: { c: string; r: string; m?: string; x?: 1 } = {
+	const payload: { c: string; r: string; m?: string; x?: 1; n?: 1 } = {
 		c: conversationId,
 		r: replyTarget,
 	};
@@ -136,6 +143,7 @@ export function encodeReplyToken(
 	if (messageId) payload.m = messageId;
 	// The x402 no-prose-reply flag rides as a compact `x:1` when set.
 	if (opts.x402) payload.x = 1;
+	if (opts.noReply) payload.n = 1;
 	return `${TOKEN_MARKER}${b64urlEncode(JSON.stringify(payload))}`;
 }
 
@@ -160,7 +168,8 @@ export function decodeReplyToken(token: string | undefined): ReplyContext | null
 		const m = payload?.m;
 		const messageId = typeof m === "string" && m.length > 0 ? m : undefined;
 		const x402 = payload?.x === 1 ? true : undefined;
-		return { conversationId, replyTarget, messageId, x402 };
+		const noReply = payload?.n === 1 ? true : undefined;
+		return { conversationId, replyTarget, messageId, x402, noReply };
 	} catch {
 		return null;
 	}

@@ -25,7 +25,11 @@
  * `id` is the de-duplication key (what the dedupe step above uses).
  */
 
-import { isAuthenticityFailure } from "@rine-network/core";
+import {
+	isAuthenticityFailure,
+	isGroupInvite,
+	isHiddenFromModel,
+} from "@rine-network/core";
 import { asMessageUuid, isSettled } from "@rine-network/sdk";
 import type { AsyncRineClient } from "@rine-network/sdk";
 import { renderMessageBody, senderLabel, verifiedNote } from "./format.js";
@@ -203,6 +207,14 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	if (isX402Frame(msg.type)) {
 		return handleX402Inbound(deps, msg, messageId);
 	}
+	// Key material is ingested by the read above and is never conversation: no
+	// turn, and acked so it leaves the inbox. Acked and remembered like any
+	// terminal arm: the decision is deterministic in the message's own type.
+	if (isHiddenFromModel(msg.type)) {
+		await ackDelivery(deps, msg.id);
+		rememberSeen(deps.seen, messageId);
+		return new Response("control frame", { status: 202 });
+	}
 	const replyTarget = msg.group_handle ?? msg.sender_handle;
 	if (!replyTarget) {
 		// Acked, as the plain read used to: both handles are the server's own
@@ -230,9 +242,8 @@ export async function processInbound(deps: InboundDeps): Promise<Response> {
 	//
 	// Leaving `m` undefined for groups keeps the broadcast
 	// send()+parentConversationId path in processCompletion/processFailure.
-	const token = msg.group_handle
-		? encodeReplyToken(msg.conversation_id, replyTarget)
-		: encodeReplyToken(msg.conversation_id, replyTarget, msg.id);
+	const inPlaceId = msg.group_handle ? undefined : msg.id;
+	const token = encodeReplyToken(msg.conversation_id, replyTarget, inPlaceId, { noReply: isGroupInvite(msg.type) });
 	// Ack delivery BEFORE starting the turn so a concurrent retry dedupes server-side
 	// too (the in-memory `seen` only covers this instance, and a fresh serverless
 	// instance starts with none of it).

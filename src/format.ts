@@ -7,7 +7,14 @@
  * so ciphertext can never reach the LLM context through a rendered string.
  */
 
-import { withA2aCleartextNotice } from "@rine-network/core";
+import {
+	HIDDEN_CONTROL_FRAME_READ,
+	groupInviteNotice,
+	isGroupInvite,
+	isHiddenFromModel,
+	withA2aCleartextNotice,
+	withoutHiddenFrames,
+} from "@rine-network/core";
 
 // One definition per language: the SDK owns the group predicates, so a group
 // renders the same way on every surface — and the four-state answer below is
@@ -37,10 +44,15 @@ import type {
 	VoteResponse,
 } from "./types.js";
 
-/** One thread turn as a role-tagged line: `[sent] you: …` / `[received] alice@org: …`. */
+/**
+ * One thread turn as a role-tagged line: `[sent] you: …` / `[received] alice@org: …`.
+ * A group invite's body was written by another agent, so its turn reads as the
+ * fixed invite sentence instead.
+ */
 export function renderThreadLine(e: ThreadEntry): string {
 	const who = e.direction === "sent" ? "you" : (e.senderHandle ?? "unknown");
-	return `[${e.direction}] ${who}: ${e.text}`;
+	const text = isGroupInvite(e.type) ? groupInviteNotice(e.senderHandle) : e.text;
+	return `[${e.direction}] ${who}: ${text}`;
 }
 
 /**
@@ -48,8 +60,9 @@ export function renderThreadLine(e: ThreadEntry): string {
  * a role-tagged line; `[unavailable]` text passes through unchanged.
  */
 export function renderThread(entries: readonly ThreadEntry[]): string {
-	if (entries.length === 0) return "No messages in this conversation.";
-	return entries.map(renderThreadLine).join("\n");
+	const shown = withoutHiddenFrames(entries);
+	if (shown.length === 0) return "No messages in this conversation.";
+	return shown.map(renderThreadLine).join("\n");
 }
 
 /** Honest signature note — never claims "verified" for an unverifiable message. */
@@ -84,6 +97,8 @@ export function unwrapText(plaintext: unknown): string {
 /**
  * Body of a message: decrypt error if unreadable, else the unwrapped plaintext —
  * led by the A2A cleartext notice when the body was never end-to-end encrypted.
+ * A key-material frame reads as its fixed sentence and a group invite as the
+ * invite notice, so neither hands a model another party's bytes.
  *
  * `explain` is the per-render tiering: pass it on a MULTI render (an inbox,
  * one call per `renderInbox()`) so the no-sender-key cause explains itself in
@@ -99,6 +114,8 @@ export function renderMessageBody(
 	msg: DecryptedMessage,
 	explain?: SenderKeyExplainer,
 ): string {
+	if (isHiddenFromModel(msg.type)) return HIDDEN_CONTROL_FRAME_READ;
+	if (isGroupInvite(msg.type)) return groupInviteNotice(msg.sender_handle ?? null);
 	if (msg.decrypt_error) {
 		const explanation = explain ? senderKeyExplanation(msg) : null;
 		const text =
@@ -143,9 +160,10 @@ function renderInboxRow(msg: DecryptedMessage, explain: SenderKeyExplainer): str
  * later row with the same cause — never module-level, never per-row.
  */
 export function renderInbox(items: readonly DecryptedMessage[]): string {
-	if (items.length === 0) return "No new messages.";
+	const shown = withoutHiddenFrames(items);
+	if (shown.length === 0) return "No new messages.";
 	const explain = senderKeyExplainer();
-	return items
+	return shown
 		.map((msg, i) => `${i + 1}. ${renderInboxRow(msg, explain)}`)
 		.join("\n");
 }

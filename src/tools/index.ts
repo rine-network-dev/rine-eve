@@ -34,8 +34,8 @@ import {
 	rineGroupJoinTool,
 	rineGroupRemoveTool,
 } from "./groups.js";
+import { rineInboxTool } from "./messaging-inbox.js";
 import {
-	rineInboxTool,
 	rineReadTool,
 	rineReplyTool,
 	rineSendAndWaitTool,
@@ -45,8 +45,8 @@ import {
 import { rineFulfillTool, rinePayTool } from "./payments.js";
 import { RINE_TOOL_META, type RineToolMeta } from "./registry.js";
 
+export { rineInboxTool } from "./messaging-inbox.js";
 export {
-	rineInboxTool,
 	rineReadTool,
 	rineReplyTool,
 	rineSendAndWaitTool,

@@ -7,7 +7,8 @@
  * endpoint, preserving the inbound conversation; falls back to
  * `parentConversationId` for legacy tokens. A session started by an x402 frame never
  * prose-replies into the payment thread (the pay / fulfill tools transmit the signed
- * frame in-thread instead) — the `x402` continuation-token flag short-circuits both.
+ * frame in-thread instead) — the `x402` continuation-token flag short-circuits both. So does
+ * the `noReply` flag, which a group invite carries: it is a control frame, answered by tools.
  * A turn a rine tool already answered (see `turn-replies.ts`) sends no final text either.
  */
 
@@ -44,7 +45,7 @@ export async function processCompletion(deps: CompletionDeps): Promise<void> {
 	if (!rc) return;
 	// A session started by an x402 frame never prose-replies into the payment
 	// thread — the pay / fulfill tools transmit the signed frame in-thread instead.
-	if (rc.x402) return;
+	if (rc.x402 || rc.noReply) return;
 	// The model already answered through a rine tool: a second message is a duplicate.
 	const answered = toolAnswer(rc, deps.ctx);
 	if (answered) {
@@ -78,8 +79,9 @@ export async function processFailure(
 	const rc = decodeReplyToken(continuationToken);
 	if (!rc) return;
 	// An x402 session never emits prose into the payment thread — not even an error
-	// notice (it would corrupt the handshake); the tool surfaces failures itself.
-	if (rc.x402) return;
+	// notice (it would corrupt the handshake); the tool surfaces failures itself. A
+	// no-reply session (a group invite) sends no error notice either.
+	if (rc.x402 || rc.noReply) return;
 	const text = "Sorry — I hit an internal error handling your request.";
 	if (rc.messageId) {
 		await client.reply(asMessageUuid(rc.messageId), { text }, { type: "rine.v1.error" });

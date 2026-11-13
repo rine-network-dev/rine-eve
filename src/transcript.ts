@@ -10,6 +10,7 @@
  */
 
 import type { ThreadEntry } from "@rine-network/sdk";
+import { withoutHiddenFrames } from "@rine-network/core";
 import { renderThreadLine } from "./format.js";
 
 /** char ≈ 4 × tokens — the coarse proxy the spec specifies. */
@@ -33,7 +34,7 @@ export function renderTranscriptContext(
 	tokenBudget: number,
 ): string[] {
 	const charBudget = Math.max(0, tokenBudget) * CHARS_PER_TOKEN;
-	const lines = entries.map(renderThreadLine);
+	const lines = withoutHiddenFrames(entries).map(renderThreadLine);
 
 	// Accumulate newest-first until the budget is exhausted.
 	const kept: string[] = [];
