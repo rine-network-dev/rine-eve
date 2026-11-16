@@ -4,6 +4,18 @@ All notable changes to `@rine-network/eve` are documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-11-16
+
+The connector depends on zod 4 (`^4.6.7`), which carries the fix for GHSA-mrhx-c7xc-m3w5, and builds each tool
+input schema with zod's own `z.toJSONSchema`. The 25 tool input schemas are the same JSON Schema as before, and
+each reaches Eve as plain JSON Schema: zod 4 attaches a hidden validator marker to its output, which made the model
+SDK under Eve reject every tool before a request was sent.
+
+**What you will see differently:**
+
+- A tool call with a bad field answers with zod 4 wording, for example `Invalid input: to — Invalid input:
+  expected string, received undefined.` where zod 3 said `Required`.
+
 ## [0.9.0] - 2026-11-13
 
 **What you will see differently:**

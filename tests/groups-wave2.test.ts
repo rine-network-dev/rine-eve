@@ -57,7 +57,7 @@ describe("visibility is required, with no default anywhere", () => {
 		});
 		const out = await run(rineGroupCreateTool({ client }), { name: "Ops" });
 		expect(out).toContain("dir.rine.network");
-		expect(out).not.toContain("Required");
+		expect(out).not.toContain("Invalid option");
 	});
 
 	it("passes through the visibility that was named", async () => {

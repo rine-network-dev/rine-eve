@@ -24,7 +24,7 @@ import type {
 } from "@rine-network/sdk";
 import type { NeedsApprovalContext, ToolModelOutput } from "eve/tools";
 import { always, never, once } from "eve/tools/approval";
-import type { ZodTypeAny, z } from "zod";
+import type { z } from "zod";
 import { type RineClientOpts, actingAgent, getRineClient } from "./client.js";
 import { formatError } from "./errors.js";
 import type { TurnContext } from "./turn-replies.js";
@@ -141,7 +141,7 @@ export type RineToolBody<I> = (
  * zod defaults. Rine identity is environment-resolved, not session-scoped, so the Eve
  * `ToolContext` only reaches the body to name the turn a call belongs to.
  */
-export function makeExecute<S extends ZodTypeAny>(
+export function makeExecute<S extends z.ZodType>(
 	schema: S,
 	opts: RineToolOpts,
 	body: RineToolBody<z.infer<S>>,

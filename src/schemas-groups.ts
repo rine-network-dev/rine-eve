@@ -49,12 +49,9 @@ export const groupCreateInput = z.object({
 		),
 	visibility: z
 		.enum(["public", "private"], {
-			// `message`, not the `required_error`/`invalid_type_error` pair: it is the
-			// one spelling both zod majors read, and it covers a missing value, a wrong
-			// value and a wrong type alike (measured against 3.25.76 and 4.4.3). This
-			// package pins `^3.25.0` so the pair would work today, but carrying the
-			// portable spelling means widening that pin can never silently swap this
-			// sentence for zod's generic "Invalid option".
+			// `message` covers a missing value, a wrong value and a wrong type alike,
+			// where zod 4 dropped the `required_error`/`invalid_type_error` pair. Without
+			// it zod's generic "Invalid option" replaces this sentence.
 			message: VISIBILITY_REQUIRED,
 		})
 		.describe(

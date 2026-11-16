@@ -160,7 +160,9 @@ export function formatError(err: unknown): string {
 	if (err instanceof ZodError) {
 		const first = err.issues[0];
 		const where = first?.path.length ? first.path.join(".") : "input";
-		return `Invalid input: ${where} — ${first?.message ?? "validation failed"}.`;
+		// Zod 4 messages already open with "Invalid input: ", so strip it once.
+		const detail = first?.message.replace(/^Invalid input: /, "") ?? "validation failed";
+		return `Invalid input: ${where} — ${detail}.`;
 	}
 	if (err instanceof AuthenticationError) {
 		return "rine auth failed — onboard with `npx @rine-network/eve onboard` or set RINE_CONFIG_DIR to your onboarded agent runtime directory.";
